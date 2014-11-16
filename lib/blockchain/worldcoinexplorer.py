@@ -1,5 +1,5 @@
 '''
-blockr.io
+worldcoinexplorer.com
 '''
 import logging
 
@@ -9,24 +9,24 @@ def get_host():
     if config.BLOCKCHAIN_SERVICE_CONNECT:
         return config.BLOCKCHAIN_SERVICE_CONNECT
     else:
-        return 'http://twdc.blockr.io' if config.TESTNET else 'http://wdc.blockr.io'
+        return 'http://www.worldcoinexplorer.com' if config.TESTNET else 'http://www.worldcoinexplorer.com'
 
 def check():
     pass
 
 def getinfo():
-    result = util.get_url(get_host() + '/api/v1/coin/info', abort_on_error=True)
-    if 'status' in result and result['status'] == 'success':
+    result = util.get_url(get_host() + '/api/coindetails', abort_on_error=True)
+    if 'TotalCoins' in result:
         return {
             "info": {
-                "blocks": result['data']['last_block']['nb']
+                "blocks": result['Blocks']
             }
         }
     
     return None
 
 def listunspent(address):
-    result = util.get_url(get_host() + '/api/v1/address/unspent/{}/'.format(address), abort_on_error=True)
+    result = util.get_url(get_host() + '/api/address/{}'.format(address), abort_on_error=True)
     if 'status' in result and result['status'] == 'success':
         utxo = []
         for txo in result['data']['unspent']:
@@ -46,52 +46,52 @@ def listunspent(address):
     return None
 
 def getaddressinfo(address):
-    infos = util.get_url(get_host() + '/api/v1/address/info/{}'.format(address), abort_on_error=True)
-    if 'status' in infos and infos['status'] == 'success':
-        txs = util.get_url(get_host() + '/api/v1/address/txs/{}'.format(address), abort_on_error=True)
-        if 'status' in txs and txs['status'] == 'success':
+    infos = util.get_url(get_host() + '/api/address/{}'.format(address), abort_on_error=True)
+    if 'Hash' in infos:
+        #txs = util.get_url(get_host() + '/api/address/transaction/{}'.format(address), abort_on_error=True)
+        #if 'status' in txs and txs['status'] == 'success':
             transactions = []
-            for tx in txs['data']['txs']:
-                transactions.append(tx['tx'])
+        #    for tx in txs['data']['txs']:
+        #        transactions.append(tx['tx'])
             return {
                 'addrStr': address,
-                'balance': infos['data']['balance'],
-                'balanceSat': infos['data']['balance'] * config.UNIT,
-                'totalReceived': infos['data']['totalreceived'],
-                'totalReceivedSat': infos['data']['totalreceived'] * config.UNIT,
+                'balance': infos['Balance'],
+                'balanceSat': infos['Balance'] * config.UNIT,
+                'totalReceived': infos['TotalReceived'],
+                'totalReceivedSat': infos['TotalReceived'] * config.UNIT,
                 'unconfirmedBalance': 0,
                 'unconfirmedBalanceSat': 0,
                 'unconfirmedTxApperances': 0,
-                'txApperances': txs['data']['nb_txs'],
+                'txApperances': 0,
                 'transactions': transactions
             }
     
     return None
 
 def gettransaction(tx_hash):
-    url = get_host() + '/api/v1/tx/raw/{}'.format(tx_hash)
+    url = get_host() + '/api/transaction/{}'.format(tx_hash)
     tx = util.get_url(url, abort_on_error=False)
-    assert tx and tx.get('status') and tx.get('code')
-    if tx['code'] == 404:
-        return None
-    elif tx['code'] != 200:
-        raise Exception("Invalid result (code %s), body: %s" % (tx['code'], tx))
+    #assert tx and tx.get('status') and tx.get('code')
+    #if tx['code'] == 404:
+    #    return None
+    #elif tx['code'] != 200:
+    #    raise Exception("Invalid result (code %s), body: %s" % (tx['code'], tx))
     
-    if 'status' in tx and tx['status'] == 'success':
+    if 'Hash' in tx:
         valueOut = 0
-        for vout in tx['data']['tx']['vout']:
-            valueOut += vout['value']
+        for vout in tx['Outputs']['Index']:
+            valueOut += vout['Amount']
         return {
             'txid': tx_hash,
-            'version': tx['data']['tx']['version'],
-            'locktime': tx['data']['tx']['locktime'],
-            'blockhash': tx['data']['tx'].get('blockhash', None), #will be None if not confirmed yet...
-            'confirmations': tx['data']['tx'].get('confirmations', None),
-            'time': tx['data']['tx'].get('time', None),
-            'blocktime': tx['data']['tx'].get('blocktime', None),
+            'version': 0,
+            'locktime': 0,
+            'blockhash': tx['Block'], #will be None if not confirmed yet...
+            'confirmations': 0,
+            'time': tx['Time'],
+            'blocktime': tx['Time'],
             'valueOut': valueOut,
-            'vin': tx['data']['tx']['vin'],
-            'vout': tx['data']['tx']['vout']
+            'vin': 0,
+            'vout': 0
         }
 
     return None

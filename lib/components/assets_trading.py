@@ -12,7 +12,7 @@ import cgi
 import numpy
 import pymongo
 
-from lib import config, util, util_bitcoin
+from lib import config, util, util_worldcoin
 
 D = decimal.Decimal
 
@@ -84,16 +84,16 @@ def calc_price_change(open, close):
     return float((D(100) * (D(close) - D(open)) / D(open)))            
 
 def get_price_primatives(start_dt=None, end_dt=None):
-    mps_xcp_btc = get_market_price_summary(config.XCP, config.BTC, start_dt=start_dt, end_dt=end_dt)
-    xcp_btc_price = mps_xcp_btc['market_price'] if mps_xcp_btc else None # == XCP/BTC
-    btc_xcp_price = calc_inverse(mps_xcp_btc['market_price']) if mps_xcp_btc else None #BTC/XCP
-    return mps_xcp_btc, xcp_btc_price, btc_xcp_price
+    mps_xbj_wdc = get_market_price_summary(config.XBJ, config.WDC, start_dt=start_dt, end_dt=end_dt)
+    xbj_wdc_price = mps_xbj_wdc['market_price'] if mps_xbj_wdc else None # == XBJ/WDC
+    wdc_xbj_price = calc_inverse(mps_xbj_wdc['market_price']) if mps_xbj_wdc else None #WDC/XBJ
+    return mps_xbj_wdc, xbj_wdc_price, wdc_xbj_price
 
 def get_asset_info(asset, at_dt=None):
     mongo_db = config.mongo_db
     asset_info = mongo_db.tracked_assets.find_one({'asset': asset})
     
-    if asset not in (config.XCP, config.BTC) and at_dt and asset_info['_at_block_time'] > at_dt:
+    if asset not in (config.XBJ, config.WDC) and at_dt and asset_info['_at_block_time'] > at_dt:
         #get the asset info at or before the given at_dt datetime
         for e in reversed(asset_info['_history']): #newest to oldest
             if e['_at_block_time'] <= at_dt:
@@ -104,104 +104,104 @@ def get_asset_info(asset, at_dt=None):
         if asset_info is None: return None
         assert asset_info['_at_block_time'] <= at_dt
       
-    #modify some of the properties of the returned asset_info for BTC and XCP
-    if asset == config.BTC:
+    #modify some of the properties of the returned asset_info for WDC and XBJ
+    if asset == config.WDC:
         if at_dt:
             start_block_index, end_block_index = util.get_block_indexes_for_dates(end_dt=at_dt)
-            asset_info['total_issued'] = util_bitcoin.get_btc_supply(normalize=False, at_block_index=end_block_index)
-            asset_info['total_issued_normalized'] = util_bitcoin.normalize_quantity(asset_info['total_issued'])
+            asset_info['total_issued'] = util_worldcoin.get_wdc_supply(normalize=False, at_block_index=end_block_index)
+            asset_info['total_issued_normalized'] = util_worldcoin.normalize_quantity(asset_info['total_issued'])
         else:
-            asset_info['total_issued'] = util_bitcoin.get_btc_supply(normalize=False)
-            asset_info['total_issued_normalized'] = util_bitcoin.normalize_quantity(asset_info['total_issued'])
-    elif asset == config.XCP:
+            asset_info['total_issued'] = util_worldcoin.get_wdc_supply(normalize=False)
+            asset_info['total_issued_normalized'] = util_worldcoin.normalize_quantity(asset_info['total_issued'])
+    elif asset == config.XBJ:
         #BUG: this does not take end_dt (if specified) into account. however, the deviation won't be too big
-        # as XCP doesn't deflate quickly at all, and shouldn't matter that much since there weren't any/much trades
+        # as XBJ doesn't deflate quickly at all, and shouldn't matter that much since there weren't any/much trades
         # before the end of the burn period (which is what is involved with how we use at_dt with currently)
-        asset_info['total_issued'] = util.call_jsonrpc_api("get_xcp_supply", abort_on_error=True)['result']
-        asset_info['total_issued_normalized'] = util_bitcoin.normalize_quantity(asset_info['total_issued'])
+        asset_info['total_issued'] = util.call_jsonrpc_api("get_xbj_supply", abort_on_error=True)['result']
+        asset_info['total_issued_normalized'] = util_worldcoin.normalize_quantity(asset_info['total_issued'])
     if not asset_info:
         raise Exception("Invalid asset: %s" % asset)
     return asset_info
 
-def get_xcp_btc_price_info(asset, mps_xcp_btc, xcp_btc_price, btc_xcp_price, with_last_trades=0, start_dt=None, end_dt=None):
-    if asset not in [config.BTC, config.XCP]:
-        #get price data for both the asset with XCP, as well as BTC
-        price_summary_in_xcp = get_market_price_summary(asset, config.XCP,
+def get_xbj_wdc_price_info(asset, mps_xbj_wdc, xbj_wdc_price, wdc_xbj_price, with_last_trades=0, start_dt=None, end_dt=None):
+    if asset not in [config.WDC, config.XBJ]:
+        #get price data for both the asset with XBJ, as well as WDC
+        price_summary_in_xbj = get_market_price_summary(asset, config.XBJ,
             with_last_trades=with_last_trades, start_dt=start_dt, end_dt=end_dt)
-        price_summary_in_btc = get_market_price_summary(asset, config.BTC,
+        price_summary_in_wdc = get_market_price_summary(asset, config.WDC,
             with_last_trades=with_last_trades, start_dt=start_dt, end_dt=end_dt)
 
-        #aggregated (averaged) price (expressed as XCP) for the asset on both the XCP and BTC markets
-        if price_summary_in_xcp: # no trade data
-            price_in_xcp = price_summary_in_xcp['market_price']
-            if xcp_btc_price:
-                aggregated_price_in_xcp = float(((D(price_summary_in_xcp['market_price']) + D(xcp_btc_price)) / D(2)))
-            else: aggregated_price_in_xcp = None
+        #aggregated (averaged) price (expressed as XBJ) for the asset on both the XBJ and WDC markets
+        if price_summary_in_xbj: # no trade data
+            price_in_xbj = price_summary_in_xbj['market_price']
+            if xbj_wdc_price:
+                aggregated_price_in_xbj = float(((D(price_summary_in_xbj['market_price']) + D(xbj_wdc_price)) / D(2)))
+            else: aggregated_price_in_xbj = None
         else:
-            price_in_xcp = None
-            aggregated_price_in_xcp = None
+            price_in_xbj = None
+            aggregated_price_in_xbj = None
             
-        if price_summary_in_btc: # no trade data
-            price_in_btc = price_summary_in_btc['market_price']
-            if btc_xcp_price:
-                aggregated_price_in_btc = float(((D(price_summary_in_btc['market_price']) + D(btc_xcp_price)) / D(2)))
-            else: aggregated_price_in_btc = None
+        if price_summary_in_wdc: # no trade data
+            price_in_wdc = price_summary_in_wdc['market_price']
+            if wdc_xbj_price:
+                aggregated_price_in_wdc = float(((D(price_summary_in_wdc['market_price']) + D(wdc_xbj_price)) / D(2)))
+            else: aggregated_price_in_wdc = None
         else:
-            aggregated_price_in_btc = None
-            price_in_btc = None
+            aggregated_price_in_wdc = None
+            price_in_wdc = None
     else:
-        #here we take the normal XCP/BTC pair, and invert it to BTC/XCP, to get XCP's data in terms of a BTC base
-        # (this is the only area we do this, as BTC/XCP is NOT standard pair ordering)
-        price_summary_in_xcp = mps_xcp_btc #might be None
-        price_summary_in_btc = copy.deepcopy(mps_xcp_btc) if mps_xcp_btc else None #must invert this -- might be None
-        if price_summary_in_btc:
-            price_summary_in_btc['market_price'] = calc_inverse(price_summary_in_btc['market_price'])
-            price_summary_in_btc['base_asset'] = config.BTC
-            price_summary_in_btc['quote_asset'] = config.XCP
-            for i in xrange(len(price_summary_in_btc['last_trades'])):
+        #here we take the normal XBJ/WDC pair, and invert it to WDC/XBJ, to get XBJ's data in terms of a WDC base
+        # (this is the only area we do this, as WDC/XBJ is NOT standard pair ordering)
+        price_summary_in_xbj = mps_xbj_wdc #might be None
+        price_summary_in_wdc = copy.deepcopy(mps_xbj_wdc) if mps_xbj_wdc else None #must invert this -- might be None
+        if price_summary_in_wdc:
+            price_summary_in_wdc['market_price'] = calc_inverse(price_summary_in_wdc['market_price'])
+            price_summary_in_wdc['base_asset'] = config.WDC
+            price_summary_in_wdc['quote_asset'] = config.XBJ
+            for i in xrange(len(price_summary_in_wdc['last_trades'])):
                 #[0]=block_time, [1]=unit_price, [2]=base_quantity_normalized, [3]=quote_quantity_normalized, [4]=block_index
-                price_summary_in_btc['last_trades'][i][1] = calc_inverse(price_summary_in_btc['last_trades'][i][1])
-                price_summary_in_btc['last_trades'][i][2], price_summary_in_btc['last_trades'][i][3] = \
-                    price_summary_in_btc['last_trades'][i][3], price_summary_in_btc['last_trades'][i][2] #swap
-        if asset == config.XCP:
-            price_in_xcp = 1.0
-            price_in_btc = price_summary_in_btc['market_price'] if price_summary_in_btc else None
-            aggregated_price_in_xcp = 1.0
-            aggregated_price_in_btc = btc_xcp_price #might be None
+                price_summary_in_wdc['last_trades'][i][1] = calc_inverse(price_summary_in_wdc['last_trades'][i][1])
+                price_summary_in_wdc['last_trades'][i][2], price_summary_in_wdc['last_trades'][i][3] = \
+                    price_summary_in_wdc['last_trades'][i][3], price_summary_in_wdc['last_trades'][i][2] #swap
+        if asset == config.XBJ:
+            price_in_xbj = 1.0
+            price_in_wdc = price_summary_in_wdc['market_price'] if price_summary_in_wdc else None
+            aggregated_price_in_xbj = 1.0
+            aggregated_price_in_wdc = wdc_xbj_price #might be None
         else:
-            assert asset == config.BTC
-            price_in_xcp = price_summary_in_xcp['market_price'] if price_summary_in_xcp else None
-            price_in_btc = 1.0
-            aggregated_price_in_xcp = xcp_btc_price #might be None
-            aggregated_price_in_btc = 1.0
-    return (price_summary_in_xcp, price_summary_in_btc, price_in_xcp, price_in_btc, aggregated_price_in_xcp, aggregated_price_in_btc)
+            assert asset == config.WDC
+            price_in_xbj = price_summary_in_xbj['market_price'] if price_summary_in_xbj else None
+            price_in_wdc = 1.0
+            aggregated_price_in_xbj = xbj_wdc_price #might be None
+            aggregated_price_in_wdc = 1.0
+    return (price_summary_in_xbj, price_summary_in_wdc, price_in_xbj, price_in_wdc, aggregated_price_in_xbj, aggregated_price_in_wdc)
     
-def calc_market_cap(asset_info, price_in_xcp, price_in_btc):
-    market_cap_in_xcp = float( (D(asset_info['total_issued_normalized']) / D(price_in_xcp))) if price_in_xcp else None
-    market_cap_in_btc = float( (D(asset_info['total_issued_normalized']) / D(price_in_btc))) if price_in_btc else None
-    return market_cap_in_xcp, market_cap_in_btc
+def calc_market_cap(asset_info, price_in_xbj, price_in_wdc):
+    market_cap_in_xbj = float( (D(asset_info['total_issued_normalized']) / D(price_in_xbj))) if price_in_xbj else None
+    market_cap_in_wdc = float( (D(asset_info['total_issued_normalized']) / D(price_in_wdc))) if price_in_wdc else None
+    return market_cap_in_xbj, market_cap_in_wdc
 
-def compile_summary_market_info(asset, mps_xcp_btc, xcp_btc_price, btc_xcp_price):        
+def compile_summary_market_info(asset, mps_xbj_wdc, xbj_wdc_price, wdc_xbj_price):        
     """Returns information related to capitalization, volume, etc for the supplied asset(s)
-    NOTE: in_btc == base asset is BTC, in_xcp == base asset is XCP
+    NOTE: in_wdc == base asset is WDC, in_xbj == base asset is XBJ
     @param assets: A list of one or more assets
     """
     asset_info = get_asset_info(asset)
-    (price_summary_in_xcp, price_summary_in_btc, price_in_xcp, price_in_btc, aggregated_price_in_xcp, aggregated_price_in_btc
-    ) = get_xcp_btc_price_info(asset, mps_xcp_btc, xcp_btc_price, btc_xcp_price, with_last_trades=30)
-    market_cap_in_xcp, market_cap_in_btc = calc_market_cap(asset_info, price_in_xcp, price_in_btc)
+    (price_summary_in_xbj, price_summary_in_wdc, price_in_xbj, price_in_wdc, aggregated_price_in_xbj, aggregated_price_in_wdc
+    ) = get_xbj_wdc_price_info(asset, mps_xbj_wdc, xbj_wdc_price, wdc_xbj_price, with_last_trades=30)
+    market_cap_in_xbj, market_cap_in_wdc = calc_market_cap(asset_info, price_in_xbj, price_in_wdc)
     return {
-        'price_in_{}'.format(config.XCP.lower()): price_in_xcp, #current price of asset vs XCP (e.g. how many units of asset for 1 unit XCP)
-        'price_in_{}'.format(config.BTC.lower()): price_in_btc, #current price of asset vs BTC (e.g. how many units of asset for 1 unit BTC)
-        'price_as_{}'.format(config.XCP.lower()): calc_inverse(price_in_xcp) if price_in_xcp else None, #current price of asset AS XCP
-        'price_as_{}'.format(config.BTC.lower()): calc_inverse(price_in_btc) if price_in_btc else None, #current price of asset AS BTC
-        'aggregated_price_in_{}'.format(config.XCP.lower()): aggregated_price_in_xcp, 
-        'aggregated_price_in_{}'.format(config.BTC.lower()): aggregated_price_in_btc,
-        'aggregated_price_as_{}'.format(config.XCP.lower()): calc_inverse(aggregated_price_in_xcp) if aggregated_price_in_xcp else None, 
-        'aggregated_price_as_{}'.format(config.BTC.lower()): calc_inverse(aggregated_price_in_btc) if aggregated_price_in_btc else None,
+        'price_in_{}'.format(config.XBJ.lower()): price_in_xbj, #current price of asset vs XBJ (e.g. how many units of asset for 1 unit XBJ)
+        'price_in_{}'.format(config.WDC.lower()): price_in_wdc, #current price of asset vs WDC (e.g. how many units of asset for 1 unit WDC)
+        'price_as_{}'.format(config.XBJ.lower()): calc_inverse(price_in_xbj) if price_in_xbj else None, #current price of asset AS XBJ
+        'price_as_{}'.format(config.WDC.lower()): calc_inverse(price_in_wdc) if price_in_wdc else None, #current price of asset AS WDC
+        'aggregated_price_in_{}'.format(config.XBJ.lower()): aggregated_price_in_xbj, 
+        'aggregated_price_in_{}'.format(config.WDC.lower()): aggregated_price_in_wdc,
+        'aggregated_price_as_{}'.format(config.XBJ.lower()): calc_inverse(aggregated_price_in_xbj) if aggregated_price_in_xbj else None, 
+        'aggregated_price_as_{}'.format(config.WDC.lower()): calc_inverse(aggregated_price_in_wdc) if aggregated_price_in_wdc else None,
         'total_supply': asset_info['total_issued_normalized'], 
-        'market_cap_in_{}'.format(config.XCP.lower()): market_cap_in_xcp,
-        'market_cap_in_{}'.format(config.BTC.lower()): market_cap_in_btc,
+        'market_cap_in_{}'.format(config.XBJ.lower()): market_cap_in_xbj,
+        'market_cap_in_{}'.format(config.WDC.lower()): market_cap_in_wdc,
     }
 
 def compile_24h_market_info(asset):        
@@ -210,7 +210,7 @@ def compile_24h_market_info(asset):
     mongo_db = config.mongo_db
 
     #perform aggregation to get 24h statistics
-    #TOTAL volume and count across all trades for the asset (on ALL markets, not just XCP and BTC pairings)
+    #TOTAL volume and count across all trades for the asset (on ALL markets, not just XBJ and WDC pairings)
     _24h_vols = {'vol': 0, 'count': 0}
     _24h_vols_as_base = mongo_db.trades.aggregate([
         {"$match": {
@@ -245,11 +245,11 @@ def compile_24h_market_info(asset):
     _24h_vols['vol'] = _24h_vols_as_base.get('vol', 0) + _24h_vols_as_quote.get('vol', 0) 
     _24h_vols['count'] = _24h_vols_as_base.get('count', 0) + _24h_vols_as_quote.get('count', 0) 
     
-    #XCP market volume with stats
-    if asset != config.XCP:
-        _24h_ohlc_in_xcp = mongo_db.trades.aggregate([
+    #XBJ market volume with stats
+    if asset != config.XBJ:
+        _24h_ohlc_in_xbj = mongo_db.trades.aggregate([
             {"$match": {
-                "base_asset": config.XCP,
+                "base_asset": config.XBJ,
                 "quote_asset": asset,
                 "block_time": {"$gte": start_dt_1d } }},
             {"$project": {
@@ -266,17 +266,17 @@ def compile_24h_market_info(asset):
                 "count": {"$sum": 1},
             }}
         ])
-        _24h_ohlc_in_xcp = {} if not _24h_ohlc_in_xcp['ok'] \
-            or not len(_24h_ohlc_in_xcp['result']) else _24h_ohlc_in_xcp['result'][0]
-        if _24h_ohlc_in_xcp: del _24h_ohlc_in_xcp['_id']
+        _24h_ohlc_in_xbj = {} if not _24h_ohlc_in_xbj['ok'] \
+            or not len(_24h_ohlc_in_xbj['result']) else _24h_ohlc_in_xbj['result'][0]
+        if _24h_ohlc_in_xbj: del _24h_ohlc_in_xbj['_id']
     else:
-        _24h_ohlc_in_xcp = {}
+        _24h_ohlc_in_xbj = {}
         
-    #BTC market volume with stats
-    if asset != config.BTC:
-        _24h_ohlc_in_btc = mongo_db.trades.aggregate([
+    #WDC market volume with stats
+    if asset != config.WDC:
+        _24h_ohlc_in_wdc = mongo_db.trades.aggregate([
             {"$match": {
-                "base_asset": config.BTC,
+                "base_asset": config.WDC,
                 "quote_asset": asset,
                 "block_time": {"$gte": start_dt_1d } }},
             {"$project": {
@@ -293,35 +293,35 @@ def compile_24h_market_info(asset):
                 "count": {"$sum": 1},
             }}
         ])
-        _24h_ohlc_in_btc = {} if not _24h_ohlc_in_btc['ok'] \
-            or not len(_24h_ohlc_in_btc['result']) else _24h_ohlc_in_btc['result'][0]
-        if _24h_ohlc_in_btc: del _24h_ohlc_in_btc['_id']
+        _24h_ohlc_in_wdc = {} if not _24h_ohlc_in_wdc['ok'] \
+            or not len(_24h_ohlc_in_wdc['result']) else _24h_ohlc_in_wdc['result'][0]
+        if _24h_ohlc_in_wdc: del _24h_ohlc_in_wdc['_id']
     else:
-        _24h_ohlc_in_btc = {}
+        _24h_ohlc_in_wdc = {}
         
     return {
         '24h_summary': _24h_vols,
         #^ total quantity traded of that asset in all markets in last 24h
-        '24h_ohlc_in_{}'.format(config.XCP.lower()): _24h_ohlc_in_xcp,
-        #^ quantity of asset traded with BTC in last 24h
-        '24h_ohlc_in_{}'.format(config.BTC.lower()): _24h_ohlc_in_btc,
-        #^ quantity of asset traded with XCP in last 24h
-        '24h_vol_price_change_in_{}'.format(config.XCP.lower()): calc_price_change(_24h_ohlc_in_xcp['open'], _24h_ohlc_in_xcp['close'])
-            if _24h_ohlc_in_xcp else None,
+        '24h_ohlc_in_{}'.format(config.XBJ.lower()): _24h_ohlc_in_xbj,
+        #^ quantity of asset traded with WDC in last 24h
+        '24h_ohlc_in_{}'.format(config.WDC.lower()): _24h_ohlc_in_wdc,
+        #^ quantity of asset traded with XBJ in last 24h
+        '24h_vol_price_change_in_{}'.format(config.XBJ.lower()): calc_price_change(_24h_ohlc_in_xbj['open'], _24h_ohlc_in_xbj['close'])
+            if _24h_ohlc_in_xbj else None,
         #^ aggregated price change from 24h ago to now, expressed as a signed float (e.g. .54 is +54%, -1.12 is -112%)
-        '24h_vol_price_change_in_{}'.format(config.BTC.lower()): calc_price_change(_24h_ohlc_in_btc['open'], _24h_ohlc_in_btc['close'])
-            if _24h_ohlc_in_btc else None,
+        '24h_vol_price_change_in_{}'.format(config.WDC.lower()): calc_price_change(_24h_ohlc_in_wdc['open'], _24h_ohlc_in_wdc['close'])
+            if _24h_ohlc_in_wdc else None,
     }
 
 def compile_7d_market_info(asset): 
     mongo_db = config.mongo_db       
     start_dt_7d = datetime.datetime.utcnow() - datetime.timedelta(days=7)
 
-    #get XCP and BTC market summarized trades over a 7d period (quantize to hour long slots)
-    _7d_history_in_xcp = None # xcp/asset market (or xcp/btc for xcp or btc)
-    _7d_history_in_btc = None # btc/asset market (or btc/xcp for xcp or btc)
-    if asset not in [config.BTC, config.XCP]:
-        for a in [config.XCP, config.BTC]:
+    #get XBJ and WDC market summarized trades over a 7d period (quantize to hour long slots)
+    _7d_history_in_xbj = None # xbj/asset market (or xbj/wdc for xbj or wdc)
+    _7d_history_in_wdc = None # wdc/asset market (or wdc/xbj for xbj or wdc)
+    if asset not in [config.WDC, config.XBJ]:
+        for a in [config.XBJ, config.WDC]:
             _7d_history = mongo_db.trades.aggregate([
                 {"$match": {
                     "base_asset": a,
@@ -344,13 +344,13 @@ def compile_7d_market_info(asset):
                 }},
             ])
             _7d_history = [] if not _7d_history['ok'] else _7d_history['result']
-            if a == config.XCP: _7d_history_in_xcp = _7d_history
-            else: _7d_history_in_btc = _7d_history
-    else: #get the XCP/BTC market and invert for BTC/XCP (_7d_history_in_btc)
+            if a == config.XBJ: _7d_history_in_xbj = _7d_history
+            else: _7d_history_in_wdc = _7d_history
+    else: #get the XBJ/WDC market and invert for WDC/XBJ (_7d_history_in_wdc)
         _7d_history = mongo_db.trades.aggregate([
             {"$match": {
-                "base_asset": config.XCP,
-                "quote_asset": config.BTC,
+                "base_asset": config.XBJ,
+                "quote_asset": config.WDC,
                 "block_time": {"$gte": start_dt_7d }
             }},
             {"$project": {
@@ -369,24 +369,24 @@ def compile_7d_market_info(asset):
             }},
         ])
         _7d_history = [] if not _7d_history['ok'] else _7d_history['result']
-        _7d_history_in_xcp = _7d_history
-        _7d_history_in_btc = copy.deepcopy(_7d_history_in_xcp)
-        for i in xrange(len(_7d_history_in_btc)):
-            _7d_history_in_btc[i]['price'] = calc_inverse(_7d_history_in_btc[i]['price'])
-            _7d_history_in_btc[i]['vol'] = calc_inverse(_7d_history_in_btc[i]['vol'])
+        _7d_history_in_xbj = _7d_history
+        _7d_history_in_wdc = copy.deepcopy(_7d_history_in_xbj)
+        for i in xrange(len(_7d_history_in_wdc)):
+            _7d_history_in_wdc[i]['price'] = calc_inverse(_7d_history_in_wdc[i]['price'])
+            _7d_history_in_wdc[i]['vol'] = calc_inverse(_7d_history_in_wdc[i]['vol'])
     
-    for l in [_7d_history_in_xcp, _7d_history_in_btc]:
+    for l in [_7d_history_in_xbj, _7d_history_in_wdc]:
         for e in l: #convert our _id field out to be an epoch ts (in ms), and delete _id
             e['when'] = time.mktime(datetime.datetime(e['_id']['year'], e['_id']['month'], e['_id']['day'], e['_id']['hour']).timetuple()) * 1000 
             del e['_id']
 
     return {
-        '7d_history_in_{}'.format(config.XCP.lower()): [[e['when'], e['price']] for e in _7d_history_in_xcp],
-        '7d_history_in_{}'.format(config.BTC.lower()): [[e['when'], e['price']] for e in _7d_history_in_btc],
+        '7d_history_in_{}'.format(config.XBJ.lower()): [[e['when'], e['price']] for e in _7d_history_in_xbj],
+        '7d_history_in_{}'.format(config.WDC.lower()): [[e['when'], e['price']] for e in _7d_history_in_wdc],
     }
 
 def compile_asset_pair_market_info():
-    """Compiles the pair-level statistics that show on the View Prices page of counterwallet, for instance"""
+    """Compiles the pair-level statistics that show on the View Prices page of bluejudywallet, for instance"""
     #loop through all open orders, and compile a listing of pairs, with a count of open orders for each pair
     mongo_db = config.mongo_db
     end_dt = datetime.datetime.utcnow()
@@ -423,8 +423,8 @@ def compile_asset_pair_market_info():
         #^ we also initialize completed_trades_count, vol_base, vol_quote because every pair inited here may
         # not have cooresponding data out of the trades_data_by_pair aggregation below
         pair_data[pair]['open_orders_count'] += 1
-        base_quantity_normalized = util_bitcoin.normalize_quantity(o['give_quantity'] if base_asset == o['give_asset'] else o['get_quantity'], base_asset_info['divisible'])
-        quote_quantity_normalized = util_bitcoin.normalize_quantity(o['give_quantity'] if quote_asset == o['give_asset'] else o['get_quantity'], quote_asset_info['divisible'])
+        base_quantity_normalized = util_worldcoin.normalize_quantity(o['give_quantity'] if base_asset == o['give_asset'] else o['get_quantity'], base_asset_info['divisible'])
+        quote_quantity_normalized = util_worldcoin.normalize_quantity(o['give_quantity'] if quote_asset == o['give_asset'] else o['get_quantity'], quote_asset_info['divisible'])
         order_price = get_price(base_quantity_normalized, quote_quantity_normalized)
         if base_asset == o['give_asset']: #selling base
             if pair_data[pair]['lowest_ask'] is None or order_price < pair_data[pair]['lowest_ask']: 
@@ -433,7 +433,7 @@ def compile_asset_pair_market_info():
             if pair_data[pair]['highest_bid'] is None or order_price > pair_data[pair]['highest_bid']:
                 pair_data[pair]['highest_bid'] = order_price
     
-    #COMPOSE volume data (in XCP and BTC), and % change data
+    #COMPOSE volume data (in XBJ and WDC), and % change data
     #loop through all trade volume over the past 24h, and match that to the open orders
     trades_data_by_pair = mongo_db.trades.aggregate([
         {"$match": {
@@ -461,37 +461,37 @@ def compile_asset_pair_market_info():
         pair_data[pair]['vol_base'] = e['vol_base'] 
         pair_data[pair]['vol_quote'] = e['vol_quote'] 
     
-    #compose price data, relative to BTC and XCP
-    mps_xcp_btc, xcp_btc_price, btc_xcp_price = get_price_primatives()
+    #compose price data, relative to WDC and XBJ
+    mps_xbj_wdc, xbj_wdc_price, wdc_xbj_price = get_price_primatives()
     for pair, e in pair_data.iteritems():
         base_asset, quote_asset = pair.split('/')
-        _24h_vol_in_btc = None
-        _24h_vol_in_xcp = None
-        #derive asset price data, expressed in BTC and XCP, for the given volumes
-        if base_asset == config.XCP:
-            _24h_vol_in_xcp = e['vol_base']
-            _24h_vol_in_btc = util_bitcoin.round_out(e['vol_base'] * xcp_btc_price) if xcp_btc_price else 0
-        elif base_asset == config.BTC:
-            _24h_vol_in_xcp = util_bitcoin.round_out(e['vol_base'] * btc_xcp_price) if btc_xcp_price else 0
-            _24h_vol_in_btc = e['vol_base']
-        else: #base is not XCP or BTC
-            price_summary_in_xcp, price_summary_in_btc, price_in_xcp, price_in_btc, aggregated_price_in_xcp, aggregated_price_in_btc = \
-                get_xcp_btc_price_info(base_asset, mps_xcp_btc, xcp_btc_price, btc_xcp_price, with_last_trades=0, start_dt=start_dt, end_dt=end_dt)
-            if price_in_xcp:
-                _24h_vol_in_xcp = util_bitcoin.round_out(e['vol_base'] * price_in_xcp)
-            if price_in_btc:
-                _24h_vol_in_btc = util_bitcoin.round_out(e['vol_base'] * price_in_btc)
+        _24h_vol_in_wdc = None
+        _24h_vol_in_xbj = None
+        #derive asset price data, expressed in WDC and XBJ, for the given volumes
+        if base_asset == config.XBJ:
+            _24h_vol_in_xbj = e['vol_base']
+            _24h_vol_in_wdc = util_worldcoin.round_out(e['vol_base'] * xbj_wdc_price) if xbj_wdc_price else 0
+        elif base_asset == config.WDC:
+            _24h_vol_in_xbj = util_worldcoin.round_out(e['vol_base'] * wdc_xbj_price) if wdc_xbj_price else 0
+            _24h_vol_in_wdc = e['vol_base']
+        else: #base is not XBJ or WDC
+            price_summary_in_xbj, price_summary_in_wdc, price_in_xbj, price_in_wdc, aggregated_price_in_xbj, aggregated_price_in_wdc = \
+                get_xbj_wdc_price_info(base_asset, mps_xbj_wdc, xbj_wdc_price, wdc_xbj_price, with_last_trades=0, start_dt=start_dt, end_dt=end_dt)
+            if price_in_xbj:
+                _24h_vol_in_xbj = util_worldcoin.round_out(e['vol_base'] * price_in_xbj)
+            if price_in_wdc:
+                _24h_vol_in_wdc = util_worldcoin.round_out(e['vol_base'] * price_in_wdc)
             
-            if _24h_vol_in_xcp is None or _24h_vol_in_btc is None:
-                #the base asset didn't have price data against BTC or XCP, or both...try against the quote asset instead
-                price_summary_in_xcp, price_summary_in_btc, price_in_xcp, price_in_btc, aggregated_price_in_xcp, aggregated_price_in_btc = \
-                    get_xcp_btc_price_info(quote_asset, mps_xcp_btc, xcp_btc_price, btc_xcp_price, with_last_trades=0, start_dt=start_dt, end_dt=end_dt)
-                if _24h_vol_in_xcp is None and price_in_xcp:
-                    _24h_vol_in_xcp = util_bitcoin.round_out(e['vol_quote'] * price_in_xcp)
-                if _24h_vol_in_btc is None and price_in_btc:
-                    _24h_vol_in_btc = util_bitcoin.round_out(e['vol_quote'] * price_in_btc)
-            pair_data[pair]['24h_vol_in_{}'.format(config.XCP.lower())] = _24h_vol_in_xcp #might still be None
-            pair_data[pair]['24h_vol_in_{}'.format(config.BTC.lower())] = _24h_vol_in_btc #might still be None
+            if _24h_vol_in_xbj is None or _24h_vol_in_wdc is None:
+                #the base asset didn't have price data against WDC or XBJ, or both...try against the quote asset instead
+                price_summary_in_xbj, price_summary_in_wdc, price_in_xbj, price_in_wdc, aggregated_price_in_xbj, aggregated_price_in_wdc = \
+                    get_xbj_wdc_price_info(quote_asset, mps_xbj_wdc, xbj_wdc_price, wdc_xbj_price, with_last_trades=0, start_dt=start_dt, end_dt=end_dt)
+                if _24h_vol_in_xbj is None and price_in_xbj:
+                    _24h_vol_in_xbj = util_worldcoin.round_out(e['vol_quote'] * price_in_xbj)
+                if _24h_vol_in_wdc is None and price_in_wdc:
+                    _24h_vol_in_wdc = util_worldcoin.round_out(e['vol_quote'] * price_in_wdc)
+            pair_data[pair]['24h_vol_in_{}'.format(config.XBJ.lower())] = _24h_vol_in_xbj #might still be None
+            pair_data[pair]['24h_vol_in_{}'.format(config.WDC.lower())] = _24h_vol_in_wdc #might still be None
         
         #get % change stats -- start by getting the first trade directly before the 24h period starts
         prev_trade = mongo_db.trades.find({
@@ -536,11 +536,11 @@ def compile_asset_market_info():
         #all caught up -- call again in 10 minutes
         return True
 
-    mps_xcp_btc, xcp_btc_price, btc_xcp_price = get_price_primatives()
-    all_traded_assets = list(set(list([config.BTC, config.XCP]) + list(mongo_db.trades.find({}, {'quote_asset': 1, '_id': 0}).distinct('quote_asset'))))
+    mps_xbj_wdc, xbj_wdc_price, wdc_xbj_price = get_price_primatives()
+    all_traded_assets = list(set(list([config.WDC, config.XBJ]) + list(mongo_db.trades.find({}, {'quote_asset': 1, '_id': 0}).distinct('quote_asset'))))
     
     #######################
-    #get a list of all assets with a trade within the last 24h (not necessarily just against XCP and BTC)
+    #get a list of all assets with a trade within the last 24h (not necessarily just against XBJ and WDC)
     # ^ this is important because compiled market info has a 24h vol parameter that designates total volume for the asset across ALL pairings
     start_dt_1d = datetime.datetime.utcnow() - datetime.timedelta(days=1)
     
@@ -555,18 +555,18 @@ def compile_asset_market_info():
     non_traded_assets = list(set(all_traded_assets) - set(assets))
     mongo_db.asset_market_info.update( {'asset': {'$in': non_traded_assets}}, {"$set": {
             '24h_summary': {'vol': 0, 'count': 0},
-            '24h_ohlc_in_{}'.format(config.XCP.lower()): {},
-            '24h_ohlc_in_{}'.format(config.BTC.lower()): {},
-            '24h_vol_price_change_in_{}'.format(config.XCP.lower()): None,
-            '24h_vol_price_change_in_{}'.format(config.BTC.lower()): None,
+            '24h_ohlc_in_{}'.format(config.XBJ.lower()): {},
+            '24h_ohlc_in_{}'.format(config.WDC.lower()): {},
+            '24h_vol_price_change_in_{}'.format(config.XBJ.lower()): None,
+            '24h_vol_price_change_in_{}'.format(config.WDC.lower()): None,
     }}, multi=True)
     logging.info("Block: %s -- Calculated 24h stats for: %s" % (current_block_index, ', '.join(assets)))
     
     #######################
-    #get a list of all assets with a trade within the last 7d up against XCP and BTC
+    #get a list of all assets with a trade within the last 7d up against XBJ and WDC
     start_dt_7d = datetime.datetime.utcnow() - datetime.timedelta(days=7)
     assets = list(set(
-          list(mongo_db.trades.find({'block_time': {'$gte': start_dt_7d}, 'base_asset': {'$in': [config.XCP, config.BTC]}}).distinct('quote_asset'))
+          list(mongo_db.trades.find({'block_time': {'$gte': start_dt_7d}, 'base_asset': {'$in': [config.XBJ, config.WDC]}}).distinct('quote_asset'))
         + list(mongo_db.trades.find({'block_time': {'$gte': start_dt_7d}}).distinct('base_asset'))
     ))
     for asset in assets:
@@ -574,22 +574,22 @@ def compile_asset_market_info():
         mongo_db.asset_market_info.update({'asset': asset}, {"$set": market_info_7d})
     non_traded_assets = list(set(all_traded_assets) - set(assets))
     mongo_db.asset_market_info.update( {'asset': {'$in': non_traded_assets}}, {"$set": {
-            '7d_history_in_{}'.format(config.XCP.lower()): [],
-            '7d_history_in_{}'.format(config.BTC.lower()): [],
+            '7d_history_in_{}'.format(config.XBJ.lower()): [],
+            '7d_history_in_{}'.format(config.WDC.lower()): [],
     }}, multi=True)
     logging.info("Block: %s -- Calculated 7d stats for: %s" % (current_block_index, ', '.join(assets)))
 
     #######################
     #update summary market data for assets traded since last_block_assets_compiled
-    #get assets that were traded since the last check with either BTC or XCP, and update their market summary data
+    #get assets that were traded since the last check with either WDC or XBJ, and update their market summary data
     assets = list(set(
-          list(mongo_db.trades.find({'block_index': {'$gt': last_block_assets_compiled}, 'base_asset': {'$in': [config.XCP, config.BTC]}}).distinct('quote_asset'))
+          list(mongo_db.trades.find({'block_index': {'$gt': last_block_assets_compiled}, 'base_asset': {'$in': [config.XBJ, config.WDC]}}).distinct('quote_asset'))
         + list(mongo_db.trades.find({'block_index': {'$gt': last_block_assets_compiled}}).distinct('base_asset'))
     ))
     #update our storage of the latest market info in mongo
     for asset in assets:
         logging.info("Block: %s -- Updating asset market info for %s ..." % (current_block_index, asset))
-        summary_info = compile_summary_market_info(asset, mps_xcp_btc, xcp_btc_price, btc_xcp_price)
+        summary_info = compile_summary_market_info(asset, mps_xbj_wdc, xbj_wdc_price, wdc_xbj_price)
         mongo_db.asset_market_info.update( {'asset': asset}, {"$set": summary_info}, upsert=True)
 
     
@@ -617,7 +617,7 @@ def compile_asset_market_info():
         # we'd rather process a later trade for a given asset, as the market price for that will take into account
         # the earlier trades on that same block for that asset, and we don't want/need multiple cap points per block
         assets_in_block = {}
-        mps_xcp_btc, xcp_btc_price, btc_xcp_price = get_price_primatives(end_dt=t_block['block_time'])
+        mps_xbj_wdc, xbj_wdc_price, wdc_xbj_price = get_price_primatives(end_dt=t_block['block_time'])
         for t in reversed(t_block['trades']):
             assets = []
             if t['base_asset'] not in assets_in_block:
@@ -631,14 +631,14 @@ def compile_asset_market_info():
             for asset in assets:
                 #recalculate the market cap for the asset this trade is for
                 asset_info = get_asset_info(asset, at_dt=t['block_time'])
-                (price_summary_in_xcp, price_summary_in_btc, price_in_xcp, price_in_btc, aggregated_price_in_xcp, aggregated_price_in_btc
-                ) = get_xcp_btc_price_info(asset, mps_xcp_btc, xcp_btc_price, btc_xcp_price, with_last_trades=0, end_dt=t['block_time'])
-                market_cap_in_xcp, market_cap_in_btc = calc_market_cap(asset_info, price_in_xcp, price_in_btc)
+                (price_summary_in_xbj, price_summary_in_wdc, price_in_xbj, price_in_wdc, aggregated_price_in_xbj, aggregated_price_in_wdc
+                ) = get_xbj_wdc_price_info(asset, mps_xbj_wdc, xbj_wdc_price, wdc_xbj_price, with_last_trades=0, end_dt=t['block_time'])
+                market_cap_in_xbj, market_cap_in_wdc = calc_market_cap(asset_info, price_in_xbj, price_in_wdc)
                 #^ this will get price data from the block time of this trade back the standard number of days and trades
                 # to determine our standard market price, relative (anchored) to the time of this trade
         
-                for market_cap_as in (config.XCP, config.BTC):
-                    market_cap = market_cap_in_xcp if market_cap_as == config.XCP else market_cap_in_btc
+                for market_cap_as in (config.XBJ, config.WDC):
+                    market_cap = market_cap_in_xbj if market_cap_as == config.XBJ else market_cap_in_wdc
                     #if there is a previously stored market cap for this asset, add a new history point only if the two caps differ
                     prev_market_cap_history = mongo_db.asset_marketcap_history.find({'market_cap_as': market_cap_as, 'asset': asset,
                         'block_index': {'$lt': t['block_index']}}).sort('block_index', pymongo.DESCENDING).limit(1)

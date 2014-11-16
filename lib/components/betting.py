@@ -246,7 +246,7 @@ def get_feeds_by_source(db, addresses):
     for feed in feeds: feeds_by_source[feed['source']] = feed
     return feeds_by_source
 
-# TODO: move this in Counterwallet
+# TODO: move this in Bluejudywallet
 def find_user_bets(db, addresses, status='open'):
     params = {
         'filters': {

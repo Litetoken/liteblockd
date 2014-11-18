@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 VERSION = "1.5.0" #should keep up with the bluejudywallet version it works with (for now at least)
 
-DB_VERSION = 22 #a db version increment will cause worldblockd to rebuild its database off of worldpartyd 
+DB_VERSION = 22 #a db version increment will cause blueblockd to rebuild its database off of bluejudyd 
 
-CAUGHT_UP = False #atomic state variable, set to True when worldpartyd AND worldblockd are caught up
+CAUGHT_UP = False #atomic state variable, set to True when bluejudyd AND blueblockd are caught up
 
 UNIT = 100000000
 
@@ -12,8 +12,8 @@ SUBDIR_FEED_IMAGES = "feed_img" #goes under the data dir and stores retrieved fe
 
 MARKET_PRICE_DERIVE_NUM_POINTS = 8 #number of last trades over which to derive the market price (via WVAP)
 
-# FROM worldpartyd
-# NOTE: These constants must match those in worldpartyd/lib/config.py
+# FROM bluejudyd
+# NOTE: These constants must match those in bluejudyd/lib/config.py
 REGULAR_DUST_SIZE = 5430
 MULTISIG_DUST_SIZE = 5430 * 2
 ORDER_WDC_DUST_LIMIT_CUTOFF = MULTISIG_DUST_SIZE

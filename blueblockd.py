@@ -1,6 +1,6 @@
 #! /usr/bin/env python3
 """
-worldblockd server
+blueblockd server
 """
 
 #import before importing other modules
@@ -33,11 +33,11 @@ from lib import (config, api, events, blockfeed, siofeeds, util)
 
 if __name__ == '__main__':
     # Parse command-line arguments.
-    parser = argparse.ArgumentParser(prog='worldblockd', description='Bluejudywallet daemon. Works with worldpartyd')
-    parser.add_argument('-V', '--version', action='version', version="worldblockd v%s" % config.VERSION)
+    parser = argparse.ArgumentParser(prog='blueblockd', description='Bluejudywallet daemon. Works with bluejudyd')
+    parser.add_argument('-V', '--version', action='version', version="blueblockd v%s" % config.VERSION)
     parser.add_argument('-v', '--verbose', dest='verbose', action='store_true', default=False, help='sets log level to DEBUG instead of WARNING')
 
-    parser.add_argument('--reparse', action='store_true', default=False, help='force full re-initialization of the worldblockd database')
+    parser.add_argument('--reparse', action='store_true', default=False, help='force full re-initialization of the blueblockd database')
     parser.add_argument('--testnet', action='store_true', default=False, help='use Worldcoin testnet addresses and block numbers')
     parser.add_argument('--data-dir', help='specify to explicitly override the directory in which to keep the config file and log file')
     parser.add_argument('--config-file', help='the location of the configuration file')
@@ -46,10 +46,10 @@ if __name__ == '__main__':
     parser.add_argument('--pid-file', help='the location of the pid file')
 
     #THINGS WE CONNECT TO
-    parser.add_argument('--worldpartyd-rpc-connect', help='the hostname of the worldpartyd JSON-RPC server')
-    parser.add_argument('--worldpartyd-rpc-port', type=int, help='the port used to communicate with worldpartyd over JSON-RPC')
-    parser.add_argument('--worldpartyd-rpc-user', help='the username used to communicate with worldpartyd over JSON-RPC')
-    parser.add_argument('--worldpartyd-rpc-password', help='the password used to communicate with worldpartyd over JSON-RPC')
+    parser.add_argument('--bluejudyd-rpc-connect', help='the hostname of the bluejudyd JSON-RPC server')
+    parser.add_argument('--bluejudyd-rpc-port', type=int, help='the port used to communicate with bluejudyd over JSON-RPC')
+    parser.add_argument('--bluejudyd-rpc-user', help='the username used to communicate with bluejudyd over JSON-RPC')
+    parser.add_argument('--bluejudyd-rpc-password', help='the password used to communicate with bluejudyd over JSON-RPC')
 
     parser.add_argument('--blockchain-service-name', help='the blockchain service name to connect to')
     parser.add_argument('--blockchain-service-connect', help='the blockchain service server URL base to connect to, if not default')
@@ -72,12 +72,12 @@ if __name__ == '__main__':
 
     #THINGS WE HOST
     parser.add_argument('--rpc-host', help='the IP of the interface to bind to for providing JSON-RPC API access (0.0.0.0 for all interfaces)')
-    parser.add_argument('--rpc-port', type=int, help='port on which to provide the worldblockd JSON-RPC API')
+    parser.add_argument('--rpc-port', type=int, help='port on which to provide the blueblockd JSON-RPC API')
     parser.add_argument('--rpc-allow-cors', action='store_true', default=True, help='Allow ajax cross domain request')
-    parser.add_argument('--socketio-host', help='the interface on which to host the worldblockd socket.io API')
-    parser.add_argument('--socketio-port', type=int, help='port on which to provide the worldblockd socket.io API')
-    parser.add_argument('--socketio-chat-host', help='the interface on which to host the worldblockd socket.io chat API')
-    parser.add_argument('--socketio-chat-port', type=int, help='port on which to provide the worldblockd socket.io chat API')
+    parser.add_argument('--socketio-host', help='the interface on which to host the blueblockd socket.io API')
+    parser.add_argument('--socketio-port', type=int, help='port on which to provide the blueblockd socket.io API')
+    parser.add_argument('--socketio-chat-host', help='the interface on which to host the blueblockd socket.io chat API')
+    parser.add_argument('--socketio-chat-port', type=int, help='port on which to provide the blueblockd socket.io chat API')
 
     parser.add_argument('--rollbar-token', help='the API token to use with rollbar (leave blank to disable rollbar integration)')
     parser.add_argument('--rollbar-env', help='the environment name for the rollbar integration (if enabled). Defaults to \'production\'')
@@ -89,14 +89,14 @@ if __name__ == '__main__':
 
     # Data directory
     if not args.data_dir:
-        config.DATA_DIR = appdirs.user_data_dir(appauthor='Worldparty', appname='worldblockd', roaming=True)
+        config.DATA_DIR = appdirs.user_data_dir(appauthor='Bluejudy', appname='blueblockd', roaming=True)
     else:
         config.DATA_DIR = args.data_dir
     if not os.path.isdir(config.DATA_DIR): os.mkdir(config.DATA_DIR)
 
     #Read config file
     configfile = ConfigParser.ConfigParser()
-    config_path = os.path.join(config.DATA_DIR, 'worldblockd.conf')
+    config_path = os.path.join(config.DATA_DIR, 'blueblockd.conf')
     configfile.read(config_path)
     has_config = configfile.has_section('Default')
 
@@ -114,19 +114,19 @@ if __name__ == '__main__':
     ##############
     # THINGS WE CONNECT TO
 
-    # worldpartyd RPC host
-    if args.worldpartyd_rpc_connect:
-        config.COUNTERPARTYD_RPC_CONNECT = args.worldpartyd_rpc_connect
-    elif has_config and configfile.has_option('Default', 'worldpartyd-rpc-connect') and configfile.get('Default', 'worldpartyd-rpc-connect'):
-        config.COUNTERPARTYD_RPC_CONNECT = configfile.get('Default', 'worldpartyd-rpc-connect')
+    # bluejudyd RPC host
+    if args.bluejudyd_rpc_connect:
+        config.COUNTERPARTYD_RPC_CONNECT = args.bluejudyd_rpc_connect
+    elif has_config and configfile.has_option('Default', 'bluejudyd-rpc-connect') and configfile.get('Default', 'bluejudyd-rpc-connect'):
+        config.COUNTERPARTYD_RPC_CONNECT = configfile.get('Default', 'bluejudyd-rpc-connect')
     else:
         config.COUNTERPARTYD_RPC_CONNECT = 'localhost'
 
-    # worldpartyd RPC port
-    if args.worldpartyd_rpc_port:
-        config.COUNTERPARTYD_RPC_PORT = args.worldpartyd_rpc_port
-    elif has_config and configfile.has_option('Default', 'worldpartyd-rpc-port') and configfile.get('Default', 'worldpartyd-rpc-port'):
-        config.COUNTERPARTYD_RPC_PORT = configfile.get('Default', 'worldpartyd-rpc-port')
+    # bluejudyd RPC port
+    if args.bluejudyd_rpc_port:
+        config.COUNTERPARTYD_RPC_PORT = args.bluejudyd_rpc_port
+    elif has_config and configfile.has_option('Default', 'bluejudyd-rpc-port') and configfile.get('Default', 'bluejudyd-rpc-port'):
+        config.COUNTERPARTYD_RPC_PORT = configfile.get('Default', 'bluejudyd-rpc-port')
     else:
         if config.TESTNET:
             config.COUNTERPARTYD_RPC_PORT = 14000
@@ -136,21 +136,21 @@ if __name__ == '__main__':
         config.COUNTERPARTYD_RPC_PORT = int(config.COUNTERPARTYD_RPC_PORT)
         assert int(config.COUNTERPARTYD_RPC_PORT) > 1 and int(config.COUNTERPARTYD_RPC_PORT) < 65535
     except:
-        raise Exception("Please specific a valid port number worldpartyd-rpc-port configuration parameter")
+        raise Exception("Please specific a valid port number bluejudyd-rpc-port configuration parameter")
             
-    # worldpartyd RPC user
-    if args.worldpartyd_rpc_user:
-        config.COUNTERPARTYD_RPC_USER = args.worldpartyd_rpc_user
-    elif has_config and configfile.has_option('Default', 'worldpartyd-rpc-user') and configfile.get('Default', 'worldpartyd-rpc-user'):
-        config.COUNTERPARTYD_RPC_USER = configfile.get('Default', 'worldpartyd-rpc-user')
+    # bluejudyd RPC user
+    if args.bluejudyd_rpc_user:
+        config.COUNTERPARTYD_RPC_USER = args.bluejudyd_rpc_user
+    elif has_config and configfile.has_option('Default', 'bluejudyd-rpc-user') and configfile.get('Default', 'bluejudyd-rpc-user'):
+        config.COUNTERPARTYD_RPC_USER = configfile.get('Default', 'bluejudyd-rpc-user')
     else:
         config.COUNTERPARTYD_RPC_USER = 'rpcuser'
 
-    # worldpartyd RPC password
-    if args.worldpartyd_rpc_password:
-        config.COUNTERPARTYD_RPC_PASSWORD = args.worldpartyd_rpc_password
-    elif has_config and configfile.has_option('Default', 'worldpartyd-rpc-password') and configfile.get('Default', 'worldpartyd-rpc-password'):
-        config.COUNTERPARTYD_RPC_PASSWORD = configfile.get('Default', 'worldpartyd-rpc-password')
+    # bluejudyd RPC password
+    if args.bluejudyd_rpc_password:
+        config.COUNTERPARTYD_RPC_PASSWORD = args.bluejudyd_rpc_password
+    elif has_config and configfile.has_option('Default', 'bluejudyd-rpc-password') and configfile.get('Default', 'bluejudyd-rpc-password'):
+        config.COUNTERPARTYD_RPC_PASSWORD = configfile.get('Default', 'bluejudyd-rpc-password')
     else:
         config.COUNTERPARTYD_RPC_PASSWORD = 'rpcpassword'
 
@@ -202,9 +202,9 @@ if __name__ == '__main__':
         config.MONGODB_DATABASE = configfile.get('Default', 'mongodb-database')
     else:
         if config.TESTNET:
-            config.MONGODB_DATABASE = 'worldblockd_testnet'
+            config.MONGODB_DATABASE = 'blueblockd_testnet'
         else:
-            config.MONGODB_DATABASE = 'worldblockd'
+            config.MONGODB_DATABASE = 'blueblockd'
 
     # mongodb user
     if args.mongodb_user:
@@ -381,14 +381,14 @@ if __name__ == '__main__':
     elif has_config and configfile.has_option('Default', 'log-file'):
         config.LOG = configfile.get('Default', 'log-file')
     else:
-        config.LOG = os.path.join(config.DATA_DIR, 'worldblockd.log')
+        config.LOG = os.path.join(config.DATA_DIR, 'blueblockd.log')
         
     if args.tx_log_file:
         config.TX_LOG = args.tx_log_file
     elif has_config and configfile.has_option('Default', 'tx-log-file'):
         config.TX_LOG = configfile.get('Default', 'tx-log-file')
     else:
-        config.TX_LOG = os.path.join(config.DATA_DIR, 'worldblockd-tx.log')
+        config.TX_LOG = os.path.join(config.DATA_DIR, 'blueblockd-tx.log')
     
 
     # PID
@@ -397,7 +397,7 @@ if __name__ == '__main__':
     elif has_config and configfile.has_option('Default', 'pid-file'):
         config.PID = configfile.get('Default', 'pid-file')
     else:
-        config.PID = os.path.join(config.DATA_DIR, 'worldblockd.pid')
+        config.PID = os.path.join(config.DATA_DIR, 'blueblockd.pid')
 
      # ROLLBAR INTEGRATION
     if args.rollbar_token:
@@ -412,7 +412,7 @@ if __name__ == '__main__':
     elif has_config and configfile.has_option('Default', 'rollbar-env'):
         config.ROLLBAR_ENV = configfile.get('Default', 'rollbar-env')
     else:
-        config.ROLLBAR_ENV = 'worldblockd-production'
+        config.ROLLBAR_ENV = 'blueblockd-production'
         
     #support email
     if args.support_email:
@@ -488,7 +488,7 @@ if __name__ == '__main__':
     tx_logger.addHandler(tx_fileh)
     tx_logger.propagate = False
     
-    logging.info("worldblock Version %s starting ..." % config.VERSION)
+    logging.info("blueblock Version %s starting ..." % config.VERSION)
     
     #Load in bluejudywallet config settings
     #TODO: Hardcode in cw path for now. Will be taken out to a plugin shortly...
@@ -651,7 +651,7 @@ if __name__ == '__main__':
         resource="socket.io", policy_server=False)
     sio_server.start() #start the socket.io server greenlets
 
-    logging.info("Starting up worldpartyd block feed poller...")
+    logging.info("Starting up bluejudyd block feed poller...")
     gevent.spawn(blockfeed.process_cpd_blockfeed, zmq_publisher_eventfeed)
 
     #start up event timers that don't depend on the feed being fully caught up
@@ -669,7 +669,7 @@ if __name__ == '__main__':
     
     #print some user friendly startup warnings as need be
     if not config.SUPPORT_EMAIL:
-        logging.warn("Support email setting not set: To enable, please specify an email for the 'support-email' setting in your worldblockd.conf")
+        logging.warn("Support email setting not set: To enable, please specify an email for the 'support-email' setting in your blueblockd.conf")
 
 
 # vim: tabstop=8 expandtab shiftwidth=4 softtabstop=4

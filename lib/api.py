@@ -36,7 +36,7 @@ D = decimal.Decimal
 def serve_api(mongo_db, redis_client):
     # Preferneces are just JSON objects... since we don't force a specific form to the wallet on
     # the server side, this makes it easier for 3rd party wallets (i.e. not Bluejudywallet) to fully be able to
-    # use worldblockd to not only pull useful data, but also load and store their own preferences, containing
+    # use blueblockd to not only pull useful data, but also load and store their own preferences, containing
     # whatever data they need
     
     DEFAULT_COUNTERPARTYD_API_CACHE_PERIOD = 60 #in seconds
@@ -134,7 +134,7 @@ def serve_api(mongo_db, redis_client):
     @dispatcher.add_method
     def get_normalized_balances(addresses):
         """
-        This call augments worldpartyd's get_balances with a normalized_quantity field. It also will include any owned
+        This call augments bluejudyd's get_balances with a normalized_quantity field. It also will include any owned
         assets for an address, even if their balance is zero. 
         NOTE: Does not retrieve WDC balance. Use get_address_info for that.
         """
@@ -384,7 +384,7 @@ def serve_api(mongo_db, redis_client):
             start_dt=datetime.datetime.utcfromtimestamp(start_ts),
             end_dt=datetime.datetime.utcfromtimestamp(end_ts) if now_ts != end_ts else None)
         
-        #make API call to worldpartyd to get all of the data for the specified address
+        #make API call to bluejudyd to get all of the data for the specified address
         txns = []
         d = _get_address_history(address, start_block=start_block_index, end_block=end_block_index)
         #mash it all together
@@ -1339,7 +1339,7 @@ def serve_api(mongo_db, redis_client):
         return True
     
     @dispatcher.add_method
-    def proxy_to_worldpartyd(method='', params=[]):
+    def proxy_to_bluejudyd(method='', params=[]):
         if method=='sql': raise Exception("Invalid method") 
         result = None
         cache_key = None
@@ -1540,7 +1540,7 @@ def serve_api(mongo_db, redis_client):
             tx_logger.info("***CSP SECURITY --- %s" % data_json)
             return flask.Response('', 200)
         
-        #"ping" worldpartyd to test
+        #"ping" bluejudyd to test
         cpd_s = time.time()
         cpd_result_valid = True
         try:
@@ -1549,7 +1549,7 @@ def serve_api(mongo_db, redis_client):
             cpd_result_valid = False
         cpd_e = time.time()
 
-        #"ping" worldblockd to test, as well
+        #"ping" blueblockd to test, as well
         cbd_s = time.time()
         cbd_result_valid = True
         cbd_result_error_code = None
@@ -1583,16 +1583,16 @@ def serve_api(mongo_db, redis_client):
             response_code = 500
         
         result = {
-            'worldpartyd': 'OK' if cpd_result_valid else 'NOT OK',
-            'worldblockd': 'OK' if cbd_result_valid else 'NOT OK',
-            'worldblockd_error': cbd_result_error_code,
-            'worldpartyd_ver': '%s.%s.%s' % (
+            'bluejudyd': 'OK' if cpd_result_valid else 'NOT OK',
+            'blueblockd': 'OK' if cbd_result_valid else 'NOT OK',
+            'blueblockd_error': cbd_result_error_code,
+            'bluejudyd_ver': '%s.%s.%s' % (
                 cpd_status['version_major'], cpd_status['version_minor'], cpd_status['version_revision']) if cpd_result_valid else '?',
-            'worldblockd_ver': config.VERSION,
-            'worldpartyd_last_block': cpd_status['last_block'] if cpd_result_valid else '?',
-            'worldpartyd_last_message_index': cpd_status['last_message_index'] if cpd_result_valid else '?',
-            'worldpartyd_check_elapsed': cpd_e - cpd_s,
-            'worldblockd_check_elapsed': cbd_e - cbd_s,
+            'blueblockd_ver': config.VERSION,
+            'bluejudyd_last_block': cpd_status['last_block'] if cpd_result_valid else '?',
+            'bluejudyd_last_message_index': cpd_status['last_message_index'] if cpd_result_valid else '?',
+            'bluejudyd_check_elapsed': cpd_e - cpd_s,
+            'blueblockd_check_elapsed': cbd_e - cbd_s,
             'local_online_users': len(siofeeds.onlineClients),
         }
         return flask.Response(json.dumps(result), response_code, mimetype='application/json')

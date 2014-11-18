@@ -1,5 +1,5 @@
 """
-blockfeed: sync with and process new blocks from worldpartyd
+blockfeed: sync with and process new blocks from bluejudyd
 """
 import re
 import os
@@ -41,11 +41,11 @@ def process_cpd_blockfeed(zmq_publisher_eventfeed):
         
         #create/update default app_config object
         mongo_db.app_config.update({}, {
-        'db_version': config.DB_VERSION, #worldblockd database version
+        'db_version': config.DB_VERSION, #blueblockd database version
         'running_testnet': config.TESTNET,
-        'worldpartyd_db_version_major': None,
-        'worldpartyd_db_version_minor': None,
-        'worldpartyd_running_testnet': None,
+        'bluejudyd_db_version_major': None,
+        'bluejudyd_db_version_minor': None,
+        'bluejudyd_running_testnet': None,
         'last_block_assets_compiled': config.BLOCK_FIRST, #for asset data compilation in events.py (resets on reparse as well)
         }, upsert=True)
         app_config = mongo_db.app_config.find()[0]
@@ -76,7 +76,7 @@ def process_cpd_blockfeed(zmq_publisher_eventfeed):
            and we should get rid of them
         
         NOTE: after calling this function, you should always trigger a "continue" statement to reiterate the processing loop
-        (which will get a new last_processed_block from worldpartyd and resume as appropriate)   
+        (which will get a new last_processed_block from bluejudyd and resume as appropriate)   
         """
         logging.warn("Pruning to block %i ..." % (max_block_index))        
         mongo_db.processed_blocks.remove({"block_index": {"$gt": max_block_index}})
@@ -166,77 +166,77 @@ def process_cpd_blockfeed(zmq_publisher_eventfeed):
         or app_config[0]['db_version'] != config.DB_VERSION
         or app_config[0]['running_testnet'] != config.TESTNET):
         if app_config.count():
-            logging.warn("worldblockd database version UPDATED (from %i to %i) or testnet setting changed (from %s to %s), or REINIT forced (%s). REBUILDING FROM SCRATCH ..." % (
+            logging.warn("blueblockd database version UPDATED (from %i to %i) or testnet setting changed (from %s to %s), or REINIT forced (%s). REBUILDING FROM SCRATCH ..." % (
                 app_config[0]['db_version'], config.DB_VERSION, app_config[0]['running_testnet'], config.TESTNET, config.REPARSE_FORCED))
         else:
-            logging.warn("worldblockd database app_config collection doesn't exist. BUILDING FROM SCRATCH...")
+            logging.warn("blueblockd database app_config collection doesn't exist. BUILDING FROM SCRATCH...")
         app_config = blow_away_db()
         my_latest_block = LATEST_BLOCK_INIT
     else:
         app_config = app_config[0]
         #get the last processed block out of mongo
         my_latest_block = mongo_db.processed_blocks.find_one(sort=[("block_index", pymongo.DESCENDING)]) or LATEST_BLOCK_INIT
-        #remove any data we have for blocks higher than this (would happen if worldblockd or mongo died
+        #remove any data we have for blocks higher than this (would happen if blueblockd or mongo died
         # or errored out while processing a block)
         my_latest_block = prune_my_stale_blocks(my_latest_block['block_index'])
 
-    #start polling worldpartyd for new blocks    
+    #start polling bluejudyd for new blocks    
     while True:
         try:
             running_info = util.call_jsonrpc_api("get_running_info", abort_on_error=True)
             if 'result' not in running_info:
-                raise AssertionError("Could not contact worldpartyd")
+                raise AssertionError("Could not contact bluejudyd")
             running_info = running_info['result']
         except Exception, e:
             logging.warn(str(e) + " -- Waiting 3 seconds before trying again...")
             time.sleep(3)
             continue
         
-        if running_info['last_message_index'] == -1: #last_message_index not set yet (due to no messages in worldpartyd DB yet)
-            logging.warn("No last_message_index returned. Waiting until worldpartyd has messages...")
+        if running_info['last_message_index'] == -1: #last_message_index not set yet (due to no messages in bluejudyd DB yet)
+            logging.warn("No last_message_index returned. Waiting until bluejudyd has messages...")
             time.sleep(10)
             continue
         
-        #wipe our state data if necessary, if worldpartyd has moved on to a new DB version
+        #wipe our state data if necessary, if bluejudyd has moved on to a new DB version
         wipeState = False
         updatePrefs = False
-        if    app_config['worldpartyd_db_version_major'] is None \
-           or app_config['worldpartyd_db_version_minor'] is None \
-           or app_config['worldpartyd_running_testnet'] is None:
+        if    app_config['bluejudyd_db_version_major'] is None \
+           or app_config['bluejudyd_db_version_minor'] is None \
+           or app_config['bluejudyd_running_testnet'] is None:
             updatePrefs = True
-        elif running_info['version_major'] != app_config['worldpartyd_db_version_major']:
-            logging.warn("worldpartyd MAJOR DB version change (we built from %s, worldpartyd is at %s). Wiping our state data." % (
-                app_config['worldpartyd_db_version_major'], running_info['version_major']))
+        elif running_info['version_major'] != app_config['bluejudyd_db_version_major']:
+            logging.warn("bluejudyd MAJOR DB version change (we built from %s, bluejudyd is at %s). Wiping our state data." % (
+                app_config['bluejudyd_db_version_major'], running_info['version_major']))
             wipeState = True
             updatePrefs = True
-        elif running_info['version_minor'] != app_config['worldpartyd_db_version_minor']:
-            logging.warn("worldpartyd MINOR DB version change (we built from %s.%s, worldpartyd is at %s.%s). Wiping our state data." % (
-                app_config['worldpartyd_db_version_major'], app_config['worldpartyd_db_version_minor'],
+        elif running_info['version_minor'] != app_config['bluejudyd_db_version_minor']:
+            logging.warn("bluejudyd MINOR DB version change (we built from %s.%s, bluejudyd is at %s.%s). Wiping our state data." % (
+                app_config['bluejudyd_db_version_major'], app_config['bluejudyd_db_version_minor'],
                 running_info['version_major'], running_info['version_minor']))
             wipeState = True
             updatePrefs = True
-        elif running_info.get('running_testnet', False) != app_config['worldpartyd_running_testnet']:
-            logging.warn("worldpartyd testnet setting change (from %s to %s). Wiping our state data." % (
-                app_config['worldpartyd_running_testnet'], running_info['running_testnet']))
+        elif running_info.get('running_testnet', False) != app_config['bluejudyd_running_testnet']:
+            logging.warn("bluejudyd testnet setting change (from %s to %s). Wiping our state data." % (
+                app_config['bluejudyd_running_testnet'], running_info['running_testnet']))
             wipeState = True
             updatePrefs = True
         if wipeState:
             app_config = blow_away_db()
         if updatePrefs:
-            app_config['worldpartyd_db_version_major'] = running_info['version_major'] 
-            app_config['worldpartyd_db_version_minor'] = running_info['version_minor']
-            app_config['worldpartyd_running_testnet'] = running_info['running_testnet']
+            app_config['bluejudyd_db_version_major'] = running_info['version_major'] 
+            app_config['bluejudyd_db_version_minor'] = running_info['version_minor']
+            app_config['bluejudyd_running_testnet'] = running_info['running_testnet']
             mongo_db.app_config.update({}, app_config)
             
             #reset my latest block record
             my_latest_block = LATEST_BLOCK_INIT
             config.CAUGHT_UP = False #You've Come a Long Way, Baby
         
-        #work up to what block worldpartyd is at
+        #work up to what block bluejudyd is at
         last_processed_block = running_info['last_block']
         
         if last_processed_block['block_index'] is None:
-            logging.warn("worldpartyd has no last processed block (probably is reparsing). Waiting 3 seconds before trying again...")
+            logging.warn("bluejudyd has no last processed block (probably is reparsing). Waiting 3 seconds before trying again...")
             time.sleep(3)
             continue
         
@@ -276,7 +276,7 @@ def process_cpd_blockfeed(zmq_publisher_eventfeed):
                         config.LAST_MESSAGE_INDEX + 1, msg['message_index'], msg, [m['message_index'] for m in block_data]))
                     #sys.exit(1) #FOR NOW
                 
-                #BUG: sometimes worldpartyd seems to return OLD messages out of the message feed. deal with those
+                #BUG: sometimes bluejudyd seems to return OLD messages out of the message feed. deal with those
                 if msg['message_index'] <= config.LAST_MESSAGE_INDEX:
                     logging.warn("BUG: IGNORED old RAW message %s: %s ..." % (msg['message_index'], msg))
                     continue
@@ -313,7 +313,7 @@ def process_cpd_blockfeed(zmq_publisher_eventfeed):
                     my_latest_block = prune_my_stale_blocks(msg_data['block_index'] - 1)
                     config.CURRENT_BLOCK_INDEX = msg_data['block_index'] - 1
 
-                    #for the current last_message_index (which could have gone down after the reorg), query worldpartyd
+                    #for the current last_message_index (which could have gone down after the reorg), query bluejudyd
                     running_info = util.call_jsonrpc_api("get_running_info", abort_on_error=True)['result']
                     config.LAST_MESSAGE_INDEX = running_info['last_message_index']
                     
@@ -469,16 +469,16 @@ def process_cpd_blockfeed(zmq_publisher_eventfeed):
             clean_mempool_tx()
 
         elif my_latest_block['block_index'] > last_processed_block['block_index']:
-            #we have stale blocks (i.e. most likely a reorg happened in worldpartyd)?? this shouldn't happen, as we
+            #we have stale blocks (i.e. most likely a reorg happened in bluejudyd)?? this shouldn't happen, as we
             # should get a reorg message. Just to be on the safe side, prune back MAX_REORG_NUM_BLOCKS blocks
-            # before what worldpartyd is saying if we see this
-            logging.error("Very odd: Ahead of worldpartyd with block indexes! Pruning back %s blocks to be safe." % config.MAX_REORG_NUM_BLOCKS)
+            # before what bluejudyd is saying if we see this
+            logging.error("Very odd: Ahead of bluejudyd with block indexes! Pruning back %s blocks to be safe." % config.MAX_REORG_NUM_BLOCKS)
             my_latest_block = prune_my_stale_blocks(last_processed_block['block_index'] - config.MAX_REORG_NUM_BLOCKS)
         else:
-            #...we may be caught up (to worldpartyd), but worldpartyd may not be (to the blockchain). And if it isn't, we aren't
+            #...we may be caught up (to bluejudyd), but bluejudyd may not be (to the blockchain). And if it isn't, we aren't
             config.CAUGHT_UP = running_info['db_caught_up']
             
-            #this logic here will cover a case where we shut down worldblockd, then start it up again quickly...
+            #this logic here will cover a case where we shut down blueblockd, then start it up again quickly...
             # in that case, there are no new blocks for it to parse, so LAST_MESSAGE_INDEX would otherwise remain 0.
             # With this logic, we will correctly initialize LAST_MESSAGE_INDEX to the last message ID of the last processed block
             if config.LAST_MESSAGE_INDEX == -1 or config.CURRENT_BLOCK_INDEX == 0:
@@ -504,4 +504,4 @@ def process_cpd_blockfeed(zmq_publisher_eventfeed):
                 config.CAUGHT_UP_STARTED_EVENTS = True
 
             publish_mempool_tx()
-            time.sleep(2) #worldblockd itself is at least caught up, wait a bit to query again for the latest block from cpd
+            time.sleep(2) #blueblockd itself is at least caught up, wait a bit to query again for the latest block from cpd

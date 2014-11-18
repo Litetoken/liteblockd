@@ -1,10 +1,10 @@
-worldblockd
+blueblockd
 ==================================================
 
-``worldblockd`` features a full-fledged JSON RPC-based API, which services Bluejudywallet, as well as any
+``blueblockd`` features a full-fledged JSON RPC-based API, which services Bluejudywallet, as well as any
 3rd party services which wish to use it.
 
-``worldblockd`` provides additional services to Bluejudywallet beyond those offered in the API provided by ``worldpartyd``.
+``blueblockd`` provides additional services to Bluejudywallet beyond those offered in the API provided by ``bluejudyd``.
 
 Such services include:
 

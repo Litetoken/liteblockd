@@ -1,4 +1,4 @@
-worldblockd
+blueblockd
 ==============
 
-Provides extended API functionality over worldpartyd (such as market information, asset history, etc). Works alongside worldpartyd.
+Provides extended API functionality over bluejudyd (such as market information, asset history, etc). Works alongside bluejudyd.

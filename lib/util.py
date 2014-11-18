@@ -105,7 +105,7 @@ def call_jsonrpc_api(method, params=None, endpoint=None, auth=None, abort_on_err
         raise Exception("Got call_jsonrpc_api request error: %s" % e)
     else:
         if r.status_code != 200 and abort_on_error:
-            raise Exception("Bad status code returned from worldpartyd: '%s'. result body: '%s'." % (r.status_code, r.read()))
+            raise Exception("Bad status code returned from bluejudyd: '%s'. result body: '%s'." % (r.status_code, r.read()))
         result = json.loads(r.read())
     finally:
         client.close()
@@ -268,8 +268,8 @@ def decorate_message(message, for_txn_history=False):
     return message
 
 def decorate_message_for_feed(msg, msg_data=None):
-    """This function takes a message from worldpartyd's message feed and mutates it a bit to be suitable to be
-    sent through the worldblockd message feed to an end-client"""
+    """This function takes a message from bluejudyd's message feed and mutates it a bit to be suitable to be
+    sent through the blueblockd message feed to an end-client"""
     if not msg_data:
         msg_data = json.loads(msg['bindings'])
     
@@ -284,8 +284,8 @@ def decorate_message_for_feed(msg, msg_data=None):
     return message
 
 def is_caught_up_well_enough_for_government_work():
-    """We don't want to give users 525 errors or login errors if worldblockd/worldpartyd is in the process of
-    getting caught up, but we DO if worldblockd is either clearly out of date with the blockchain, or reinitializing its database"""
+    """We don't want to give users 525 errors or login errors if blueblockd/bluejudyd is in the process of
+    getting caught up, but we DO if blueblockd is either clearly out of date with the blockchain, or reinitializing its database"""
     return config.CAUGHT_UP or (config.BLOCKCHAIN_SERVICE_LAST_BLOCK and config.CURRENT_BLOCK_INDEX >= config.BLOCKCHAIN_SERVICE_LAST_BLOCK - 1)
 
 def stream_fetch(urls, completed_callback, urls_group_size=50, urls_group_time_spacing=0, max_fetch_size=4*1024,
@@ -484,13 +484,13 @@ def block_cache(func):
         sql = "SELECT block_index FROM blocks ORDER BY block_index DESC LIMIT 1"
         block_index = call_jsonrpc_api('sql', {'query': sql, 'bindings': []})['result'][0]['block_index']
 
-        cached_result = config.mongo_db.worldblockd_cache.find_one({'block_index': block_index, 'function': function_signature})
+        cached_result = config.mongo_db.blueblockd_cache.find_one({'block_index': block_index, 'function': function_signature})
 
         if not cached_result or config.TESTNET:
             #logging.info("generate cache ({}, {}, {})".format(func.__name__, block_index, function_signature))
             try:
                 result = func(*args, **kwargs)
-                config.mongo_db.worldblockd_cache.insert({
+                config.mongo_db.blueblockd_cache.insert({
                     'block_index': block_index, 
                     'function': function_signature,
                     'result': json.dumps(result)
@@ -508,5 +508,5 @@ def block_cache(func):
 
 def clean_block_cache(block_index):
     #logging.info("clean block cache lower than {}".format(block_index))
-    config.mongo_db.worldblockd_cache.remove({'block_index': {'$lt': block_index}})
+    config.mongo_db.blueblockd_cache.remove({'block_index': {'$lt': block_index}})
 

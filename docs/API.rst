@@ -11,7 +11,7 @@ Interacting with the API
 Connecting to the API
 ----------------------
 
-By default, ``worldblockd`` will listen on port ``4001`` for API
+By default, ``blueblockd`` will listen on port ``4001`` for API
 requests. API requests are made via a HTTP POST request to ``/api/``, with JSON-encoded
 data passed as the POST body. For more information on JSON RPC, please see the `JSON RPC specification <http://json-rpc.org/wiki/specification>`__.
 
@@ -34,7 +34,7 @@ Return Types
 wallet IDs
 ^^^^^^^^^^^
 
-An individual Bluejudywallet user needs a way to identify themselves to ``worldblockd`` for things like storing
+An individual Bluejudywallet user needs a way to identify themselves to ``blueblockd`` for things like storing
 and retrieving their wallet preferences data, and more.
 
 For this purpose, we define the concept of a wallet ID, which is simply the user's Bluejudywallet 12-word password,
@@ -225,7 +225,7 @@ Asset Functions
 
 .. function:: get_normalized_balances(addresses)
 
-  This call augments worldpartyd's get_balances with a normalized_quantity field. It also will include any owned assets for an address, even if their balance is zero. NOTE: Does not retrieve WDC balance. Use get_address_info for that.
+  This call augments bluejudyd's get_balances with a normalized_quantity field. It also will include any owned assets for an address, even if their balance is zero. NOTE: Does not retrieve WDC balance. Use get_address_info for that.
 
   :param list addresses: List of addresses to check
   :return: List
@@ -234,7 +234,7 @@ Asset Functions
 .. function:: get_order_book_buysell(buy_asset, sell_asset, pct_fee_provided=None, pct_fee_required=None)
 
    .. deprecated:: 1.5
-      Use worldpartyd's `get_orders`
+      Use bluejudyd's `get_orders`
 
 
    :param buy_asset: Asset
@@ -275,7 +275,7 @@ Asset Functions
 .. function:: get_order_book_simple(asset1, asset2, min_pct_fee_provided=None, max_pct_fee_required=None)
 
     .. deprecated:: 1.5
-      Use worldpartyd's `get_orders`
+      Use bluejudyd's `get_orders`
 
     Easier to call version when you want all orders involving the two assets.
 
@@ -520,7 +520,7 @@ Message Functions
 
 .. function:: get_messagefeed_messages_by_index(message_indexes)
 
-  Alias for worldpartyd get_messages_by_index
+  Alias for bluejudyd get_messages_by_index
 
   :param list message_indexs: Message IDs to fetch
   :return: A list of messages
@@ -626,13 +626,13 @@ Action/Write API Function Reference
     .. deprecated:: 1.5
 
 
-.. function:: proxy_to_worldpartyd(method='', params={})
+.. function:: proxy_to_bluejudyd(method='', params={})
 
-  :param method: Method name to call in worldpartyd.
+  :param method: Method name to call in bluejudyd.
   :param params: Array of function parameters.
-  :returns: The method response from worldpartyd
+  :returns: The method response from bluejudyd
 
-  Relays a request to the worldpartyd server, with the given method and params, and returns the result. See the `worldpartyd API documentation <http://worldpartyd.readthedocs.org/en/latest/API.html>`_ for available methods.
+  Relays a request to the bluejudyd server, with the given method and params, and returns the result. See the `bluejudyd API documentation <http://bluejudyd.readthedocs.org/en/latest/API.html>`_ for available methods.
 
 .. function:: record_wdc_open_order(wallet_id, order_tx_hash)
 
@@ -676,7 +676,7 @@ An object that stores the Bluejudywallet preferences for the given wallet ID.
 API Changes
 -------------
 
-This section documents any changes to the ``worldblockd`` API, for version numbers where there were API-level modifications.
+This section documents any changes to the ``blueblockd`` API, for version numbers where there were API-level modifications.
 
 1.5
 ^^^^^^^^^^^^^^^^^^^^^^^^^^

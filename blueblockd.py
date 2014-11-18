@@ -373,7 +373,7 @@ if __name__ == '__main__':
     if config.TESTNET:
         config.BLOCK_FIRST = 154908
     else:
-        config.BLOCK_FIRST = 278270
+        config.BLOCK_FIRST = 1557957
 
     # Log
     if args.log_file:
@@ -492,7 +492,7 @@ if __name__ == '__main__':
     
     #Load in bluejudywallet config settings
     #TODO: Hardcode in cw path for now. Will be taken out to a plugin shortly...
-    bluejudywallet_config_path = os.path.join('/home/xbj/bluejudywallet/bluejudywallet.conf.json')
+    bluejudywallet_config_path = os.path.join('/home/ceo/bluewallet/bluewallet.conf.json')
     if os.path.exists(bluejudywallet_config_path):
         logging.info("Loading bluejudywallet config at '%s'" % bluejudywallet_config_path)
         with open(bluejudywallet_config_path) as f:

@@ -1,6 +1,6 @@
 
-#dependencies for blueblockd
-#blueblockd currently uses Python 2.7 due to gevent-socketio's lack of support for Python 3
+#dependencies for craftblockd
+#craftblockd currently uses Python 2.7 due to gevent-socketio's lack of support for Python 3
 
 #############
 #similar/same deps as with bluejudyd
@@ -19,7 +19,7 @@ json-rpc==1.6.0
 pytest==2.5.1
 
 #############
-#blueblockd specific deps
+#craftblockd specific deps
 
 pycoin==0.42
 

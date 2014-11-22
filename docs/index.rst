@@ -1,10 +1,10 @@
-blueblockd
+craftblockd
 ==================================================
 
-``blueblockd`` features a full-fledged JSON RPC-based API, which services Bluejudywallet, as well as any
+``craftblockd`` features a full-fledged JSON RPC-based API, which services Bluejudywallet, as well as any
 3rd party services which wish to use it.
 
-``blueblockd`` provides additional services to Bluejudywallet beyond those offered in the API provided by ``bluejudyd``.
+``craftblockd`` provides additional services to Bluejudywallet beyond those offered in the API provided by ``bluejudyd``.
 
 Such services include:
 

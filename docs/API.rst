@@ -11,7 +11,7 @@ Interacting with the API
 Connecting to the API
 ----------------------
 
-By default, ``blueblockd`` will listen on port ``4001`` for API
+By default, ``craftblockd`` will listen on port ``4001`` for API
 requests. API requests are made via a HTTP POST request to ``/api/``, with JSON-encoded
 data passed as the POST body. For more information on JSON RPC, please see the `JSON RPC specification <http://json-rpc.org/wiki/specification>`__.
 
@@ -34,7 +34,7 @@ Return Types
 wallet IDs
 ^^^^^^^^^^^
 
-An individual Bluejudywallet user needs a way to identify themselves to ``blueblockd`` for things like storing
+An individual Bluejudywallet user needs a way to identify themselves to ``craftblockd`` for things like storing
 and retrieving their wallet preferences data, and more.
 
 For this purpose, we define the concept of a wallet ID, which is simply the user's Bluejudywallet 12-word password,
@@ -96,7 +96,7 @@ Asset Functions
    :param asset2: An asset
    :param limit: Max # of records to return
    :return: Market info for the given pair
-   :rtype: {'24h_vol_in_wdc', 'open_orders_count', 'lowest_ask', 'base_asset', 'completed_trades_count', '24h_pct_change', 'vol_quote', 'highest_bid', '24h_vol_in_xbj', 'vol_base', 'last_updated', 'quote_asset'}
+   :rtype: {'24h_vol_in_ltc', 'open_orders_count', 'lowest_ask', 'base_asset', 'completed_trades_count', '24h_pct_change', 'vol_quote', 'highest_bid', '24h_vol_in_dla', 'vol_base', 'last_updated', 'quote_asset'}
 
 .. function:: get_balance_history(asset, addresses, normalize=True, start_ts=None, end_ts=None)
 
@@ -135,32 +135,32 @@ Asset Functions
 
   :param list assets: Assets to check
   :return: Array
-  :rtype: {'24h_hlc_in_wdc', 'extended_description', 'extended_pgpsig', 'aggregated_price_as_wdc', 'price_in_wdc', '24h_summary':{'vol', 'count'}, 'market_cap_in_wdc', 'asset', 'price_as_xbj', '7d_history_in_wdc':[[ts, price]], '24h_vol_price_change_in_xbj', 'price_in_xbj', 'extended_website', '24h_vol_price_change_in_wdc', 'aggregated_price_as_xbj', 'market_cap_in_xbj', '7d_history_in_xbj':[[ts, price]], 'aggregated_price_in_wdc', 'aggregated_price_in_xbj', 'price_as_wdc', 'total_supply', '24h_ohlc_xbj', 'extended_image'}
+  :rtype: {'24h_hlc_in_ltc', 'extended_description', 'extended_pgpsig', 'aggregated_price_as_ltc', 'price_in_ltc', '24h_summary':{'vol', 'count'}, 'market_cap_in_ltc', 'asset', 'price_as_dla', '7d_history_in_ltc':[[ts, price]], '24h_vol_price_change_in_dla', 'price_in_dla', 'extended_website', '24h_vol_price_change_in_ltc', 'aggregated_price_as_dla', 'market_cap_in_dla', '7d_history_in_dla':[[ts, price]], 'aggregated_price_in_ltc', 'aggregated_price_in_dla', 'price_as_ltc', 'total_supply', '24h_ohlc_dla', 'extended_image'}
 
 .. function:: get_market_info_leaderboard(limit=100)
 
   :param limit: Number of results to return
   :return: Array
   :rtype: {base_currency:[{
-                                     '24h_ohlc_in_wdc',
+                                     '24h_ohlc_in_ltc',
                                      'total_supply',
-                                     'aggregated_price_in_wdc',
-                                     'price_in_wdc',
-                                     '24h_vol_price_change_in_xbj',
-                                     'aggregated_price_in_xbj',
+                                     'aggregated_price_in_ltc',
+                                     'price_in_ltc',
+                                     '24h_vol_price_change_in_dla',
+                                     'aggregated_price_in_dla',
                                      '24h_summary: {'vol', 'count'},
-                                     'price_in_xbj',
-                                     'price_as_wdc',
-                                     'market_cap_in_wdc',
-                                     '24h_ohlc_in_xbj',
-                                     '24h_vol_price_change_in_wdc',
-                                     'aggregated_price_as_xbj',
-                                     'market_cap_in_xbj',
+                                     'price_in_dla',
+                                     'price_as_ltc',
+                                     'market_cap_in_ltc',
+                                     '24h_ohlc_in_dla',
+                                     '24h_vol_price_change_in_ltc',
+                                     'aggregated_price_as_dla',
+                                     'market_cap_in_dla',
                                      'asset',
-                                     'price_as_xbj',
-                                     '7d_history_in_xbj',
-                                     '7d_history_in_wdc',
-                                     'aggregated_price_as_wdc'}]}
+                                     'price_as_dla',
+                                     '7d_history_in_dla',
+                                     '7d_history_in_ltc',
+                                     'aggregated_price_as_ltc'}]}
 
 .. function:: get_market_details(asset1, asset2, min_fee_provided=0.95, max_fee_required=0.95)
 
@@ -225,7 +225,7 @@ Asset Functions
 
 .. function:: get_normalized_balances(addresses)
 
-  This call augments bluejudyd's get_balances with a normalized_quantity field. It also will include any owned assets for an address, even if their balance is zero. NOTE: Does not retrieve WDC balance. Use get_address_info for that.
+  This call augments bluejudyd's get_balances with a normalized_quantity field. It also will include any owned assets for an address, even if their balance is zero. NOTE: Does not retrieve LTC balance. Use get_address_info for that.
 
   :param list addresses: List of addresses to check
   :return: List
@@ -382,7 +382,7 @@ Betting Functions
 
 .. function:: get_feed(address_or_url='')
 
-  :param address_or_url: Feed URL or Worldcoin Address
+  :param address_or_url: Feed URL or Litecoin Address
   :rtype: {'broadcasts':[{'status', 'tx_hash', 'locked', 'timestamp', 'source', 'text', 'tx_index', 'value', 'block_index', 'fee_fraction_int'}], 'counters':{'bets':[]}
 
 .. function:: get_feeds_by_source(addresses=[])
@@ -621,7 +621,7 @@ Action/Write API Function Reference
 -----------------------------------
 
 
-.. function:: cancel_wdc_open_order(wallet_id, order_tx_hash)
+.. function:: cancel_ltc_open_order(wallet_id, order_tx_hash)
 
     .. deprecated:: 1.5
 
@@ -634,11 +634,11 @@ Action/Write API Function Reference
 
   Relays a request to the bluejudyd server, with the given method and params, and returns the result. See the `bluejudyd API documentation <http://bluejudyd.readthedocs.org/en/latest/API.html>`_ for available methods.
 
-.. function:: record_wdc_open_order(wallet_id, order_tx_hash)
+.. function:: record_ltc_open_order(wallet_id, order_tx_hash)
 
-  Records an association between a wallet ID and order TX ID for a trade where WDC is being SOLD, to allow
-  buyers to see which sellers of the WDC are "online" (which can lead to a better result as a WDCpay will be required
-  to complete any trades where WDC is involved, and the seller (or at least their wallet) must be online for this to happen.
+  Records an association between a wallet ID and order TX ID for a trade where LTC is being SOLD, to allow
+  buyers to see which sellers of the LTC are "online" (which can lead to a better result as a LTCpay will be required
+  to complete any trades where LTC is involved, and the seller (or at least their wallet) must be online for this to happen.
 
 .. function:: store_chat_handle(wallet_id, handle)
 
@@ -668,7 +668,7 @@ An object that stores the Bluejudywallet preferences for the given wallet ID.
 * **num_addresses_used** (*integer*): The number of addresses utilized in the user's wallet (this
   determines how many addresses we will deterministally generate when the user logs in).
 * **address_aliases** (*list*): A list of zero or objects, with each object having an ``address`` string property,
-  being the Worldcoin base56 address, and an ``alias`` string property, being the textual alias (i.e. nickname)
+  being the Litecoin base56 address, and an ``alias`` string property, being the textual alias (i.e. nickname)
   for this address. Using aliases helps make the wallet more user-friendly.
 
 
@@ -676,7 +676,7 @@ An object that stores the Bluejudywallet preferences for the given wallet ID.
 API Changes
 -------------
 
-This section documents any changes to the ``blueblockd`` API, for version numbers where there were API-level modifications.
+This section documents any changes to the ``craftblockd`` API, for version numbers where there were API-level modifications.
 
 1.5
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -684,7 +684,7 @@ This section documents any changes to the ``blueblockd`` API, for version number
 
 **Summary:** Deprecated several redundant/unused functions for removal in a future version. Any code calling these functions should be re-written. Refer to the documentation of the individual functions for replacements.
 
-* ``cancel_wdc_open_order``
+* ``cancel_ltc_open_order``
 * ``get_asset_pair_market_info``
 * ``get_base_quote_asset``
 * ``get_chain_block_height``

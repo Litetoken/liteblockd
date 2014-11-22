@@ -15,7 +15,7 @@ import time
 import pymongo
 import gevent
 
-from lib import config, util, events, blockchain, util_worldcoin
+from lib import config, util, events, blockchain, util_litecoin
 from lib.components import assets, betting
 
 D = decimal.Decimal
@@ -33,7 +33,7 @@ def process_cpd_blockfeed(zmq_publisher_eventfeed):
         mongo_db.asset_market_info.drop()
         mongo_db.asset_marketcap_history.drop()
         mongo_db.pair_market_info.drop()
-        mongo_db.wdc_open_orders.drop()
+        mongo_db.ltc_open_orders.drop()
         mongo_db.asset_extended_info.drop()
         mongo_db.transaction_stats.drop()
         mongo_db.feeds.drop()
@@ -41,7 +41,7 @@ def process_cpd_blockfeed(zmq_publisher_eventfeed):
         
         #create/update default app_config object
         mongo_db.app_config.update({}, {
-        'db_version': config.DB_VERSION, #blueblockd database version
+        'db_version': config.DB_VERSION, #craftblockd database version
         'running_testnet': config.TESTNET,
         'bluejudyd_db_version_major': None,
         'bluejudyd_db_version_minor': None,
@@ -52,8 +52,8 @@ def process_cpd_blockfeed(zmq_publisher_eventfeed):
         
         #DO NOT DELETE preferences and chat_handles and chat_history
         
-        #create XBJ and WDC assets in tracked_assets
-        for asset in [config.XBJ, config.WDC]:
+        #create DLA and LTC assets in tracked_assets
+        for asset in [config.DLA, config.LTC]:
             base_asset = {
                 'asset': asset,
                 'owner': None,
@@ -124,7 +124,7 @@ def process_cpd_blockfeed(zmq_publisher_eventfeed):
             params = {
                 'filters': [
                     {'field':'tx_hash', 'op': 'NOT IN', 'value': tx_hashes},
-                    {'field':'category', 'op': 'IN', 'value': ['sends', 'wdcpays', 'issuances', 'dividends', 'callbacks']}
+                    {'field':'category', 'op': 'IN', 'value': ['sends', 'ltcpays', 'issuances', 'dividends', 'callbacks']}
                 ],
                 'filterop': 'AND'
             }
@@ -166,17 +166,17 @@ def process_cpd_blockfeed(zmq_publisher_eventfeed):
         or app_config[0]['db_version'] != config.DB_VERSION
         or app_config[0]['running_testnet'] != config.TESTNET):
         if app_config.count():
-            logging.warn("blueblockd database version UPDATED (from %i to %i) or testnet setting changed (from %s to %s), or REINIT forced (%s). REBUILDING FROM SCRATCH ..." % (
+            logging.warn("craftblockd database version UPDATED (from %i to %i) or testnet setting changed (from %s to %s), or REINIT forced (%s). REBUILDING FROM SCRATCH ..." % (
                 app_config[0]['db_version'], config.DB_VERSION, app_config[0]['running_testnet'], config.TESTNET, config.REPARSE_FORCED))
         else:
-            logging.warn("blueblockd database app_config collection doesn't exist. BUILDING FROM SCRATCH...")
+            logging.warn("craftblockd database app_config collection doesn't exist. BUILDING FROM SCRATCH...")
         app_config = blow_away_db()
         my_latest_block = LATEST_BLOCK_INIT
     else:
         app_config = app_config[0]
         #get the last processed block out of mongo
         my_latest_block = mongo_db.processed_blocks.find_one(sort=[("block_index", pymongo.DESCENDING)]) or LATEST_BLOCK_INIT
-        #remove any data we have for blocks higher than this (would happen if blueblockd or mongo died
+        #remove any data we have for blocks higher than this (would happen if craftblockd or mongo died
         # or errored out while processing a block)
         my_latest_block = prune_my_stale_blocks(my_latest_block['block_index'])
 
@@ -338,7 +338,7 @@ def process_cpd_blockfeed(zmq_publisher_eventfeed):
                         logging.warn("Credit/debit of %s where asset ('%s') does not exist. Ignoring..." % (msg_data['quantity'], msg_data['asset']))
                         continue
                     quantity = msg_data['quantity'] if msg['category'] == 'credits' else -msg_data['quantity']
-                    quantity_normalized = util_worldcoin.normalize_quantity(quantity, asset_info['divisible'])
+                    quantity_normalized = util_litecoin.normalize_quantity(quantity, asset_info['divisible'])
 
                     #look up the previous balance to go off of
                     last_bal_change = mongo_db.balance_changes.find_one({
@@ -372,20 +372,20 @@ def process_cpd_blockfeed(zmq_publisher_eventfeed):
                 
                 #book trades
                 if (msg['category'] == 'order_matches'
-                    and ((msg['command'] == 'update' and msg_data['status'] == 'completed') #for a trade with WDC involved, but that is settled (completed)
-                         or ('forward_asset' in msg_data and msg_data['forward_asset'] != config.WDC and msg_data['backward_asset'] != config.WDC))): #or for a trade without WDC on either end
+                    and ((msg['command'] == 'update' and msg_data['status'] == 'completed') #for a trade with LTC involved, but that is settled (completed)
+                         or ('forward_asset' in msg_data and msg_data['forward_asset'] != config.LTC and msg_data['backward_asset'] != config.LTC))): #or for a trade without LTC on either end
 
                     if msg['command'] == 'update' and msg_data['status'] == 'completed':
-                        #an order is being updated to a completed status (i.e. a WDCpay has completed)
+                        #an order is being updated to a completed status (i.e. a LTCpay has completed)
                         tx0_hash, tx1_hash = msg_data['order_match_id'][:64], msg_data['order_match_id'][64:] 
-                        #get the order_match this wdcpay settles
+                        #get the order_match this ltcpay settles
                         order_match = util.call_jsonrpc_api("get_order_matches",
                             {'filters': [
                              {'field': 'tx0_hash', 'op': '==', 'value': tx0_hash},
                              {'field': 'tx1_hash', 'op': '==', 'value': tx1_hash}]
                             }, abort_on_error=True)['result'][0]
                     else:
-                        assert msg_data['status'] == 'completed' #should not enter a pending state for non WDC matches
+                        assert msg_data['status'] == 'completed' #should not enter a pending state for non LTC matches
                         order_match = msg_data
 
                     forward_asset_info = mongo_db.tracked_assets.find_one({'asset': order_match['forward_asset']})
@@ -393,15 +393,15 @@ def process_cpd_blockfeed(zmq_publisher_eventfeed):
                     assert forward_asset_info and backward_asset_info
                     base_asset, quote_asset = util.assets_to_asset_pair(order_match['forward_asset'], order_match['backward_asset'])
                     
-                    #don't create trade records from order matches with WDC that are under the dust limit
-                    if    (order_match['forward_asset'] == config.WDC and order_match['forward_quantity'] <= config.ORDER_WDC_DUST_LIMIT_CUTOFF) \
-                       or (order_match['backward_asset'] == config.WDC and order_match['backward_quantity'] <= config.ORDER_WDC_DUST_LIMIT_CUTOFF):
-                        logging.debug("Order match %s ignored due to %s under dust limit." % (order_match['tx0_hash'] + order_match['tx1_hash'], config.WDC))
+                    #don't create trade records from order matches with LTC that are under the dust limit
+                    if    (order_match['forward_asset'] == config.LTC and order_match['forward_quantity'] <= config.ORDER_LTC_DUST_LIMIT_CUTOFF) \
+                       or (order_match['backward_asset'] == config.LTC and order_match['backward_quantity'] <= config.ORDER_LTC_DUST_LIMIT_CUTOFF):
+                        logging.debug("Order match %s ignored due to %s under dust limit." % (order_match['tx0_hash'] + order_match['tx1_hash'], config.LTC))
                         continue
 
                     #take divisible trade quantities to floating point
-                    forward_quantity = util_worldcoin.normalize_quantity(order_match['forward_quantity'], forward_asset_info['divisible'])
-                    backward_quantity = util_worldcoin.normalize_quantity(order_match['backward_quantity'], backward_asset_info['divisible'])
+                    forward_quantity = util_litecoin.normalize_quantity(order_match['forward_quantity'], forward_asset_info['divisible'])
+                    backward_quantity = util_litecoin.normalize_quantity(order_match['backward_quantity'], backward_asset_info['divisible'])
                     
                     #compose trade
                     trade = {
@@ -478,7 +478,7 @@ def process_cpd_blockfeed(zmq_publisher_eventfeed):
             #...we may be caught up (to bluejudyd), but bluejudyd may not be (to the blockchain). And if it isn't, we aren't
             config.CAUGHT_UP = running_info['db_caught_up']
             
-            #this logic here will cover a case where we shut down blueblockd, then start it up again quickly...
+            #this logic here will cover a case where we shut down craftblockd, then start it up again quickly...
             # in that case, there are no new blocks for it to parse, so LAST_MESSAGE_INDEX would otherwise remain 0.
             # With this logic, we will correctly initialize LAST_MESSAGE_INDEX to the last message ID of the last processed block
             if config.LAST_MESSAGE_INDEX == -1 or config.CURRENT_BLOCK_INDEX == 0:
@@ -504,4 +504,4 @@ def process_cpd_blockfeed(zmq_publisher_eventfeed):
                 config.CAUGHT_UP_STARTED_EVENTS = True
 
             publish_mempool_tx()
-            time.sleep(2) #blueblockd itself is at least caught up, wait a bit to query again for the latest block from cpd
+            time.sleep(2) #craftblockd itself is at least caught up, wait a bit to query again for the latest block from cpd

@@ -23,7 +23,7 @@ import pymongo
 from bson import json_util
 from bson.son import SON
 
-from lib import config, siofeeds, util, blockchain, util_worldcoin
+from lib import config, siofeeds, util, blockchain, util_litecoin
 from lib.components import betting, rps, assets, assets_trading, dex
 
 PREFERENCES_MAX_LENGTH = 100000 #in bytes, as expressed in JSON
@@ -36,7 +36,7 @@ D = decimal.Decimal
 def serve_api(mongo_db, redis_client):
     # Preferneces are just JSON objects... since we don't force a specific form to the wallet on
     # the server side, this makes it easier for 3rd party wallets (i.e. not Bluejudywallet) to fully be able to
-    # use blueblockd to not only pull useful data, but also load and store their own preferences, containing
+    # use craftblockd to not only pull useful data, but also load and store their own preferences, containing
     # whatever data they need
     
     DEFAULT_COUNTERPARTYD_API_CACHE_PERIOD = 60 #in seconds
@@ -136,7 +136,7 @@ def serve_api(mongo_db, redis_client):
         """
         This call augments bluejudyd's get_balances with a normalized_quantity field. It also will include any owned
         assets for an address, even if their balance is zero. 
-        NOTE: Does not retrieve WDC balance. Use get_address_info for that.
+        NOTE: Does not retrieve LTC balance. Use get_address_info for that.
         """
         if not isinstance(addresses, list):
             raise Exception("addresses must be a list of addresses, even if it just contains one address")
@@ -161,7 +161,7 @@ def serve_api(mongo_db, redis_client):
             if not d['quantity'] and ((d['address'] + d['asset']) not in isowner):
                 continue #don't include balances with a zero asset value
             asset_info = mongo_db.tracked_assets.find_one({'asset': d['asset']})
-            d['normalized_quantity'] = util_worldcoin.normalize_quantity(d['quantity'], asset_info['divisible'])
+            d['normalized_quantity'] = util_litecoin.normalize_quantity(d['quantity'], asset_info['divisible'])
             d['owner'] = (d['address'] + d['asset']) in isowner
             mappings[d['address'] + d['asset']] = d
             data.append(d)
@@ -242,7 +242,7 @@ def serve_api(mongo_db, redis_client):
               'end_block': end_block,
             }, abort_on_error=True)['result']
         
-        address_dict['wdcpays'] = util.call_jsonrpc_api("get_wdcpays",
+        address_dict['ltcpays'] = util.call_jsonrpc_api("get_ltcpays",
             { 'filters': [{'field': 'source', 'op': '==', 'value': address}, {'field': 'destination', 'op': '==', 'value': address}],
               'filterop': 'or',
               'order_by': 'block_index',
@@ -438,7 +438,7 @@ def serve_api(mongo_db, redis_client):
         data = {}
         results = {}
         #^ format is result[market_cap_as][asset] = [[block_time, market_cap], [block_time2, market_cap2], ...] 
-        for market_cap_as in (config.XBJ, config.WDC):
+        for market_cap_as in (config.DLA, config.LTC):
             caps = mongo_db.asset_marketcap_history.aggregate([
                 {"$match": {
                     "market_cap_as": market_cap_as,
@@ -497,23 +497,23 @@ def serve_api(mongo_db, redis_client):
 
     @dispatcher.add_method
     def get_market_info_leaderboard(limit=100):
-        """returns market leaderboard data for both the XBJ and WDC markets"""
-        #do two queries because we limit by our sorted results, and we might miss an asset with a high WDC trading value
-        # but with little or no XBJ trading activity, for instance if we just did one query
-        assets_market_info_xbj = list(mongo_db.asset_market_info.find({}, {'_id': 0}).sort('market_cap_in_{}'.format(config.XBJ.lower()), pymongo.DESCENDING).limit(limit))
-        assets_market_info_wdc = list(mongo_db.asset_market_info.find({}, {'_id': 0}).sort('market_cap_in_{}'.format(config.WDC.lower()), pymongo.DESCENDING).limit(limit))
+        """returns market leaderboard data for both the DLA and LTC markets"""
+        #do two queries because we limit by our sorted results, and we might miss an asset with a high LTC trading value
+        # but with little or no DLA trading activity, for instance if we just did one query
+        assets_market_info_dla = list(mongo_db.asset_market_info.find({}, {'_id': 0}).sort('market_cap_in_{}'.format(config.DLA.lower()), pymongo.DESCENDING).limit(limit))
+        assets_market_info_ltc = list(mongo_db.asset_market_info.find({}, {'_id': 0}).sort('market_cap_in_{}'.format(config.LTC.lower()), pymongo.DESCENDING).limit(limit))
         assets_market_info = {
-            config.XBJ.lower(): [a for a in assets_market_info_xbj if a['price_in_{}'.format(config.XBJ.lower())]],
-            config.WDC.lower(): [a for a in assets_market_info_wdc if a['price_in_{}'.format(config.WDC.lower())]]
+            config.DLA.lower(): [a for a in assets_market_info_dla if a['price_in_{}'.format(config.DLA.lower())]],
+            config.LTC.lower(): [a for a in assets_market_info_ltc if a['price_in_{}'.format(config.LTC.lower())]]
         }
         #throw on extended info, if it exists for a given asset
-        assets = list(set([a['asset'] for a in assets_market_info[config.XBJ.lower()]] + [a['asset'] for a in assets_market_info[config.WDC.lower()]]))
+        assets = list(set([a['asset'] for a in assets_market_info[config.DLA.lower()]] + [a['asset'] for a in assets_market_info[config.LTC.lower()]]))
         extended_asset_info = mongo_db.asset_extended_info.find({'asset': {'$in': assets}})
         extended_asset_info_dict = {}
         for e in extended_asset_info:
             if not e.get('disabled', False): #skip assets marked disabled
                 extended_asset_info_dict[e['asset']] = e
-        for r in (assets_market_info[config.XBJ.lower()], assets_market_info[config.WDC.lower()]):
+        for r in (assets_market_info[config.DLA.lower()], assets_market_info[config.LTC.lower()]):
             for a in r:
                 if a['asset'] in extended_asset_info_dict:
                     extended_info = extended_asset_info_dict[a['asset']]
@@ -638,9 +638,9 @@ def serve_api(mongo_db, redis_client):
     ask_book_min_pct_fee_provided=None, ask_book_min_pct_fee_required=None, ask_book_max_pct_fee_required=None):
         """Gets the current order book for a specified asset pair
         
-        @param: normalized_fee_required: Only specify if buying WDC. If specified, the order book will be pruned down to only
+        @param: normalized_fee_required: Only specify if buying LTC. If specified, the order book will be pruned down to only
          show orders at and above this fee_required
-        @param: normalized_fee_provided: Only specify if selling WDC. If specified, the order book will be pruned down to only
+        @param: normalized_fee_provided: Only specify if selling LTC. If specified, the order book will be pruned down to only
          show orders at and above this fee_provided
         """
         base_asset_info = mongo_db.tracked_assets.find_one({'asset': base_asset})
@@ -658,10 +658,10 @@ def serve_api(mongo_db, redis_client):
             {"field": "get_asset", "op": "==", "value": quote_asset},
             {"field": "give_asset", "op": "==", "value": base_asset},
         ]
-        if base_asset == config.WDC or quote_asset == config.WDC:
+        if base_asset == config.LTC or quote_asset == config.LTC:
             extra_filters = [
-                {'field': 'give_remaining', 'op': '>', 'value': 0}, #don't show empty WDC orders
-                {'field': 'get_remaining', 'op': '>', 'value': 0}, #don't show empty WDC orders
+                {'field': 'give_remaining', 'op': '>', 'value': 0}, #don't show empty LTC orders
+                {'field': 'get_remaining', 'op': '>', 'value': 0}, #don't show empty LTC orders
                 {'field': 'fee_required_remaining', 'op': '>=', 'value': 0},
                 {'field': 'fee_provided_remaining', 'op': '>=', 'value': 0},
             ]
@@ -685,18 +685,18 @@ def serve_api(mongo_db, redis_client):
             }, abort_on_error=True)['result']
         
         def get_o_pct(o):
-            if o['give_asset'] == config.WDC: #NB: fee_provided could be zero here
+            if o['give_asset'] == config.LTC: #NB: fee_provided could be zero here
                 pct_fee_provided = float(( D(o['fee_provided_remaining']) / D(o['give_quantity']) ))
             else: pct_fee_provided = None
-            if o['get_asset'] == config.WDC: #NB: fee_required could be zero here
+            if o['get_asset'] == config.LTC: #NB: fee_required could be zero here
                 pct_fee_required = float(( D(o['fee_required_remaining']) / D(o['get_quantity']) ))
             else: pct_fee_required = None
             return pct_fee_provided, pct_fee_required
 
-        #filter results by pct_fee_provided and pct_fee_required for WDC pairs as appropriate
+        #filter results by pct_fee_provided and pct_fee_required for LTC pairs as appropriate
         filtered_base_bid_orders = []
         filtered_base_ask_orders = []
-        if base_asset == config.WDC or quote_asset == config.WDC:      
+        if base_asset == config.LTC or quote_asset == config.LTC:      
             for o in base_bid_orders:
                 pct_fee_provided, pct_fee_required = get_o_pct(o)
                 addToBook = True
@@ -726,21 +726,21 @@ def serve_api(mongo_db, redis_client):
             book = {}
             for o in orders:
                 if o['give_asset'] == base_asset:
-                    if base_asset == config.WDC and o['give_quantity'] <= config.ORDER_WDC_DUST_LIMIT_CUTOFF:
+                    if base_asset == config.LTC and o['give_quantity'] <= config.ORDER_LTC_DUST_LIMIT_CUTOFF:
                         continue #filter dust orders, if necessary
                     
-                    give_quantity = util_worldcoin.normalize_quantity(o['give_quantity'], base_asset_info['divisible'])
-                    get_quantity = util_worldcoin.normalize_quantity(o['get_quantity'], quote_asset_info['divisible'])
+                    give_quantity = util_litecoin.normalize_quantity(o['give_quantity'], base_asset_info['divisible'])
+                    get_quantity = util_litecoin.normalize_quantity(o['get_quantity'], quote_asset_info['divisible'])
                     unit_price = float(( D(get_quantity) / D(give_quantity) ))
-                    remaining = util_worldcoin.normalize_quantity(o['give_remaining'], base_asset_info['divisible'])
+                    remaining = util_litecoin.normalize_quantity(o['give_remaining'], base_asset_info['divisible'])
                 else:
-                    if quote_asset == config.WDC and o['give_quantity'] <= config.ORDER_WDC_DUST_LIMIT_CUTOFF:
+                    if quote_asset == config.LTC and o['give_quantity'] <= config.ORDER_LTC_DUST_LIMIT_CUTOFF:
                         continue #filter dust orders, if necessary
 
-                    give_quantity = util_worldcoin.normalize_quantity(o['give_quantity'], quote_asset_info['divisible'])
-                    get_quantity = util_worldcoin.normalize_quantity(o['get_quantity'], base_asset_info['divisible'])
+                    give_quantity = util_litecoin.normalize_quantity(o['give_quantity'], quote_asset_info['divisible'])
+                    get_quantity = util_litecoin.normalize_quantity(o['get_quantity'], base_asset_info['divisible'])
                     unit_price = float(( D(give_quantity) / D(get_quantity) ))
-                    remaining = util_worldcoin.normalize_quantity(o['get_remaining'], base_asset_info['divisible'])
+                    remaining = util_litecoin.normalize_quantity(o['get_remaining'], base_asset_info['divisible'])
                 id = "%s_%s_%s" % (base_asset, quote_asset, unit_price)
                 #^ key = {base}_{bid}_{unit_price}, values ref entries in book
                 book.setdefault(id, {'unit_price': unit_price, 'quantity': 0, 'count': 0})
@@ -785,10 +785,10 @@ def serve_api(mongo_db, redis_client):
             # indexes and display datetimes instead)
             o['block_time'] = time.mktime(util.get_block_time(o['block_index']).timetuple()) * 1000
             
-        #for orders where WDC is the give asset, also return online status of the user
+        #for orders where LTC is the give asset, also return online status of the user
         for o in orders:
-            if o['give_asset'] == config.WDC:
-                r = mongo_db.wdc_open_orders.find_one({'order_tx_hash': o['tx_hash']})
+            if o['give_asset'] == config.LTC:
+                r = mongo_db.ltc_open_orders.find_one({'order_tx_hash': o['tx_hash']})
                 o['_is_online'] = (r['wallet_id'] in siofeeds.onlineClients) if r else False
             else:
                 o['_is_online'] = None #does not apply in this case
@@ -827,31 +827,31 @@ def serve_api(mongo_db, redis_client):
         ask_book_min_pct_fee_provided = None
         ask_book_min_pct_fee_required = None
         ask_book_max_pct_fee_required = None
-        if base_asset == config.WDC:
-            if buy_asset == config.WDC:
-                #if WDC is base asset and we're buying it, we're buying the BASE. we require a WDC fee (we're on the bid (bottom) book and we want a lower price)
-                # - show BASE buyers (bid book) that require a WDC fee >= what we require (our side of the book)
-                # - show BASE sellers (ask book) that provide a WDC fee >= what we require
+        if base_asset == config.LTC:
+            if buy_asset == config.LTC:
+                #if LTC is base asset and we're buying it, we're buying the BASE. we require a LTC fee (we're on the bid (bottom) book and we want a lower price)
+                # - show BASE buyers (bid book) that require a LTC fee >= what we require (our side of the book)
+                # - show BASE sellers (ask book) that provide a LTC fee >= what we require
                 bid_book_min_pct_fee_required = pct_fee_required #my competition at the given fee required
                 ask_book_min_pct_fee_provided = pct_fee_required
-            elif sell_asset == config.WDC:
-                #if WDC is base asset and we're selling it, we're selling the BASE. we provide a WDC fee (we're on the ask (top) book and we want a higher price)
-                # - show BASE buyers (bid book) that provide a WDC fee >= what we provide 
-                # - show BASE sellers (ask book) that require a WDC fee <= what we provide (our side of the book)
+            elif sell_asset == config.LTC:
+                #if LTC is base asset and we're selling it, we're selling the BASE. we provide a LTC fee (we're on the ask (top) book and we want a higher price)
+                # - show BASE buyers (bid book) that provide a LTC fee >= what we provide 
+                # - show BASE sellers (ask book) that require a LTC fee <= what we provide (our side of the book)
                 bid_book_max_pct_fee_required = pct_fee_provided
                 ask_book_min_pct_fee_provided = pct_fee_provided #my competition at the given fee provided
-        elif quote_asset == config.WDC:
-            assert base_asset == config.XBJ #only time when this is the case
-            if buy_asset == config.WDC:
-                #if WDC is quote asset and we're buying it, we're selling the BASE. we require a WDC fee (we're on the ask (top) book and we want a higher price)
-                # - show BASE buyers (bid book) that provide a WDC fee >= what we require 
-                # - show BASE sellers (ask book) that require a WDC fee >= what we require (our side of the book)
+        elif quote_asset == config.LTC:
+            assert base_asset == config.DLA #only time when this is the case
+            if buy_asset == config.LTC:
+                #if LTC is quote asset and we're buying it, we're selling the BASE. we require a LTC fee (we're on the ask (top) book and we want a higher price)
+                # - show BASE buyers (bid book) that provide a LTC fee >= what we require 
+                # - show BASE sellers (ask book) that require a LTC fee >= what we require (our side of the book)
                 bid_book_min_pct_fee_provided = pct_fee_required
                 ask_book_min_pct_fee_required = pct_fee_required #my competition at the given fee required
-            elif sell_asset == config.WDC:
-                #if WDC is quote asset and we're selling it, we're buying the BASE. we provide a WDC fee (we're on the bid (bottom) book and we want a lower price)
-                # - show BASE buyers (bid book) that provide a WDC fee >= what we provide (our side of the book)
-                # - show BASE sellers (ask book) that require a WDC fee <= what we provide 
+            elif sell_asset == config.LTC:
+                #if LTC is quote asset and we're selling it, we're buying the BASE. we provide a LTC fee (we're on the bid (bottom) book and we want a lower price)
+                # - show BASE buyers (bid book) that provide a LTC fee >= what we provide (our side of the book)
+                # - show BASE sellers (ask book) that require a LTC fee <= what we provide 
                 bid_book_min_pct_fee_provided = pct_fee_provided #my compeitition at the given fee provided
                 ask_book_max_pct_fee_required = pct_fee_provided
 
@@ -1110,15 +1110,15 @@ def serve_api(mongo_db, redis_client):
         return final_history
 
     @dispatcher.add_method
-    def record_wdc_open_order(wallet_id, order_tx_hash):
-        """Records an association between a wallet ID and order TX ID for a trade where WDC is being SOLD, to allow
-        buyers to see which sellers of the WDC are "online" (which can lead to a better result as a WDCpay will be required
-        to complete any trades where WDC is involved, and the seller (or at least their wallet) must be online for this to happen"""
+    def record_ltc_open_order(wallet_id, order_tx_hash):
+        """Records an association between a wallet ID and order TX ID for a trade where LTC is being SOLD, to allow
+        buyers to see which sellers of the LTC are "online" (which can lead to a better result as a LTCpay will be required
+        to complete any trades where LTC is involved, and the seller (or at least their wallet) must be online for this to happen"""
         #ensure the wallet_id exists
         result =  mongo_db.preferences.find_one({"wallet_id": wallet_id})
         if not result: raise Exception("WalletID does not exist")
         
-        mongo_db.wdc_open_orders.insert({
+        mongo_db.ltc_open_orders.insert({
             'wallet_id': wallet_id,
             'order_tx_hash': order_tx_hash,
             'when_created': datetime.datetime.utcnow()
@@ -1126,9 +1126,9 @@ def serve_api(mongo_db, redis_client):
         return True
 
     @dispatcher.add_method
-    def cancel_wdc_open_order(wallet_id, order_tx_hash):
+    def cancel_ltc_open_order(wallet_id, order_tx_hash):
         #DEPRECATED 1.5
-        mongo_db.wdc_open_orders.remove({'order_tx_hash': order_tx_hash, 'wallet_id': wallet_id})
+        mongo_db.ltc_open_orders.remove({'order_tx_hash': order_tx_hash, 'wallet_id': wallet_id})
         #^ wallet_id is used more for security here so random folks can't remove orders from this collection just by tx hash
         return True
     
@@ -1407,7 +1407,7 @@ def serve_api(mongo_db, redis_client):
 
     @dispatcher.add_method
     def get_users_pairs(addresses=[], max_pairs=12):
-        return dex.get_users_pairs(addresses, max_pairs, quote_assets=['XBJ', 'XWDC'])
+        return dex.get_users_pairs(addresses, max_pairs, quote_assets=['DLA', 'XLTC'])
 
     @dispatcher.add_method
     def get_market_orders(asset1, asset2, addresses=[], min_fee_provided=0.95, max_fee_required=0.95):
@@ -1549,7 +1549,7 @@ def serve_api(mongo_db, redis_client):
             cpd_result_valid = False
         cpd_e = time.time()
 
-        #"ping" blueblockd to test, as well
+        #"ping" craftblockd to test, as well
         cbd_s = time.time()
         cbd_result_valid = True
         cbd_result_error_code = None
@@ -1584,15 +1584,15 @@ def serve_api(mongo_db, redis_client):
         
         result = {
             'bluejudyd': 'OK' if cpd_result_valid else 'NOT OK',
-            'blueblockd': 'OK' if cbd_result_valid else 'NOT OK',
-            'blueblockd_error': cbd_result_error_code,
+            'craftblockd': 'OK' if cbd_result_valid else 'NOT OK',
+            'craftblockd_error': cbd_result_error_code,
             'bluejudyd_ver': '%s.%s.%s' % (
                 cpd_status['version_major'], cpd_status['version_minor'], cpd_status['version_revision']) if cpd_result_valid else '?',
-            'blueblockd_ver': config.VERSION,
+            'craftblockd_ver': config.VERSION,
             'bluejudyd_last_block': cpd_status['last_block'] if cpd_result_valid else '?',
             'bluejudyd_last_message_index': cpd_status['last_message_index'] if cpd_result_valid else '?',
             'bluejudyd_check_elapsed': cpd_e - cpd_s,
-            'blueblockd_check_elapsed': cbd_e - cbd_s,
+            'craftblockd_check_elapsed': cbd_e - cbd_s,
             'local_online_users': len(siofeeds.onlineClients),
         }
         return flask.Response(json.dumps(result), response_code, mimetype='application/json')

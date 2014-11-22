@@ -3,13 +3,13 @@ blockr.io
 '''
 import logging
 
-from lib import config, util, util_worldcoin
+from lib import config, util, util_litecoin
 
 def get_host():
     if config.BLOCKCHAIN_SERVICE_CONNECT:
         return config.BLOCKCHAIN_SERVICE_CONNECT
     else:
-        return 'http://twdc.blockr.io' if config.TESTNET else 'http://wdc.blockr.io'
+        return 'http://tltc.blockr.io' if config.TESTNET else 'http://ltc.blockr.io'
 
 def check():
     pass
@@ -109,6 +109,6 @@ def get_pubkey_for_address(address):
         #parse the pubkey out of the first sent transaction
         tx = gettransaction(tx_id)
         pubkey_hex = tx['vin'][0]['scriptSig']['asm'].split(' ')[1]
-        if util_worldcoin.pubkey_to_address(pubkey_hex) == address:
+        if util_litecoin.pubkey_to_address(pubkey_hex) == address:
             return pubkey_hex
     return None

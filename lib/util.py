@@ -105,7 +105,7 @@ def call_jsonrpc_api(method, params=None, endpoint=None, auth=None, abort_on_err
         raise Exception("Got call_jsonrpc_api request error: %s" % e)
     else:
         if r.status_code != 200 and abort_on_error:
-            raise Exception("Bad status code returned from bluejudyd: '%s'. result body: '%s'." % (r.status_code, r.read()))
+            raise Exception("Bad status code returned from czarcraftd: '%s'. result body: '%s'." % (r.status_code, r.read()))
         result = json.loads(r.read())
     finally:
         client.close()
@@ -268,7 +268,7 @@ def decorate_message(message, for_txn_history=False):
     return message
 
 def decorate_message_for_feed(msg, msg_data=None):
-    """This function takes a message from bluejudyd's message feed and mutates it a bit to be suitable to be
+    """This function takes a message from czarcraftd's message feed and mutates it a bit to be suitable to be
     sent through the craftblockd message feed to an end-client"""
     if not msg_data:
         msg_data = json.loads(msg['bindings'])
@@ -284,7 +284,7 @@ def decorate_message_for_feed(msg, msg_data=None):
     return message
 
 def is_caught_up_well_enough_for_government_work():
-    """We don't want to give users 525 errors or login errors if craftblockd/bluejudyd is in the process of
+    """We don't want to give users 525 errors or login errors if craftblockd/czarcraftd is in the process of
     getting caught up, but we DO if craftblockd is either clearly out of date with the blockchain, or reinitializing its database"""
     return config.CAUGHT_UP or (config.BLOCKCHAIN_SERVICE_LAST_BLOCK and config.CURRENT_BLOCK_INDEX >= config.BLOCKCHAIN_SERVICE_LAST_BLOCK - 1)
 

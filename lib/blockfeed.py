@@ -1,5 +1,5 @@
 """
-blockfeed: sync with and process new blocks from bluejudyd
+blockfeed: sync with and process new blocks from czarcraftd
 """
 import re
 import os
@@ -43,9 +43,9 @@ def process_cpd_blockfeed(zmq_publisher_eventfeed):
         mongo_db.app_config.update({}, {
         'db_version': config.DB_VERSION, #craftblockd database version
         'running_testnet': config.TESTNET,
-        'bluejudyd_db_version_major': None,
-        'bluejudyd_db_version_minor': None,
-        'bluejudyd_running_testnet': None,
+        'czarcraftd_db_version_major': None,
+        'czarcraftd_db_version_minor': None,
+        'czarcraftd_running_testnet': None,
         'last_block_assets_compiled': config.BLOCK_FIRST, #for asset data compilation in events.py (resets on reparse as well)
         }, upsert=True)
         app_config = mongo_db.app_config.find()[0]
@@ -76,7 +76,7 @@ def process_cpd_blockfeed(zmq_publisher_eventfeed):
            and we should get rid of them
         
         NOTE: after calling this function, you should always trigger a "continue" statement to reiterate the processing loop
-        (which will get a new last_processed_block from bluejudyd and resume as appropriate)   
+        (which will get a new last_processed_block from czarcraftd and resume as appropriate)   
         """
         logging.warn("Pruning to block %i ..." % (max_block_index))        
         mongo_db.processed_blocks.remove({"block_index": {"$gt": max_block_index}})
@@ -180,63 +180,63 @@ def process_cpd_blockfeed(zmq_publisher_eventfeed):
         # or errored out while processing a block)
         my_latest_block = prune_my_stale_blocks(my_latest_block['block_index'])
 
-    #start polling bluejudyd for new blocks    
+    #start polling czarcraftd for new blocks    
     while True:
         try:
             running_info = util.call_jsonrpc_api("get_running_info", abort_on_error=True)
             if 'result' not in running_info:
-                raise AssertionError("Could not contact bluejudyd")
+                raise AssertionError("Could not contact czarcraftd")
             running_info = running_info['result']
         except Exception, e:
             logging.warn(str(e) + " -- Waiting 3 seconds before trying again...")
             time.sleep(3)
             continue
         
-        if running_info['last_message_index'] == -1: #last_message_index not set yet (due to no messages in bluejudyd DB yet)
-            logging.warn("No last_message_index returned. Waiting until bluejudyd has messages...")
+        if running_info['last_message_index'] == -1: #last_message_index not set yet (due to no messages in czarcraftd DB yet)
+            logging.warn("No last_message_index returned. Waiting until czarcraftd has messages...")
             time.sleep(10)
             continue
         
-        #wipe our state data if necessary, if bluejudyd has moved on to a new DB version
+        #wipe our state data if necessary, if czarcraftd has moved on to a new DB version
         wipeState = False
         updatePrefs = False
-        if    app_config['bluejudyd_db_version_major'] is None \
-           or app_config['bluejudyd_db_version_minor'] is None \
-           or app_config['bluejudyd_running_testnet'] is None:
+        if    app_config['czarcraftd_db_version_major'] is None \
+           or app_config['czarcraftd_db_version_minor'] is None \
+           or app_config['czarcraftd_running_testnet'] is None:
             updatePrefs = True
-        elif running_info['version_major'] != app_config['bluejudyd_db_version_major']:
-            logging.warn("bluejudyd MAJOR DB version change (we built from %s, bluejudyd is at %s). Wiping our state data." % (
-                app_config['bluejudyd_db_version_major'], running_info['version_major']))
+        elif running_info['version_major'] != app_config['czarcraftd_db_version_major']:
+            logging.warn("czarcraftd MAJOR DB version change (we built from %s, czarcraftd is at %s). Wiping our state data." % (
+                app_config['czarcraftd_db_version_major'], running_info['version_major']))
             wipeState = True
             updatePrefs = True
-        elif running_info['version_minor'] != app_config['bluejudyd_db_version_minor']:
-            logging.warn("bluejudyd MINOR DB version change (we built from %s.%s, bluejudyd is at %s.%s). Wiping our state data." % (
-                app_config['bluejudyd_db_version_major'], app_config['bluejudyd_db_version_minor'],
+        elif running_info['version_minor'] != app_config['czarcraftd_db_version_minor']:
+            logging.warn("czarcraftd MINOR DB version change (we built from %s.%s, czarcraftd is at %s.%s). Wiping our state data." % (
+                app_config['czarcraftd_db_version_major'], app_config['czarcraftd_db_version_minor'],
                 running_info['version_major'], running_info['version_minor']))
             wipeState = True
             updatePrefs = True
-        elif running_info.get('running_testnet', False) != app_config['bluejudyd_running_testnet']:
-            logging.warn("bluejudyd testnet setting change (from %s to %s). Wiping our state data." % (
-                app_config['bluejudyd_running_testnet'], running_info['running_testnet']))
+        elif running_info.get('running_testnet', False) != app_config['czarcraftd_running_testnet']:
+            logging.warn("czarcraftd testnet setting change (from %s to %s). Wiping our state data." % (
+                app_config['czarcraftd_running_testnet'], running_info['running_testnet']))
             wipeState = True
             updatePrefs = True
         if wipeState:
             app_config = blow_away_db()
         if updatePrefs:
-            app_config['bluejudyd_db_version_major'] = running_info['version_major'] 
-            app_config['bluejudyd_db_version_minor'] = running_info['version_minor']
-            app_config['bluejudyd_running_testnet'] = running_info['running_testnet']
+            app_config['czarcraftd_db_version_major'] = running_info['version_major'] 
+            app_config['czarcraftd_db_version_minor'] = running_info['version_minor']
+            app_config['czarcraftd_running_testnet'] = running_info['running_testnet']
             mongo_db.app_config.update({}, app_config)
             
             #reset my latest block record
             my_latest_block = LATEST_BLOCK_INIT
             config.CAUGHT_UP = False #You've Come a Long Way, Baby
         
-        #work up to what block bluejudyd is at
+        #work up to what block czarcraftd is at
         last_processed_block = running_info['last_block']
         
         if last_processed_block['block_index'] is None:
-            logging.warn("bluejudyd has no last processed block (probably is reparsing). Waiting 3 seconds before trying again...")
+            logging.warn("czarcraftd has no last processed block (probably is reparsing). Waiting 3 seconds before trying again...")
             time.sleep(3)
             continue
         
@@ -276,7 +276,7 @@ def process_cpd_blockfeed(zmq_publisher_eventfeed):
                         config.LAST_MESSAGE_INDEX + 1, msg['message_index'], msg, [m['message_index'] for m in block_data]))
                     #sys.exit(1) #FOR NOW
                 
-                #BUG: sometimes bluejudyd seems to return OLD messages out of the message feed. deal with those
+                #BUG: sometimes czarcraftd seems to return OLD messages out of the message feed. deal with those
                 if msg['message_index'] <= config.LAST_MESSAGE_INDEX:
                     logging.warn("BUG: IGNORED old RAW message %s: %s ..." % (msg['message_index'], msg))
                     continue
@@ -313,7 +313,7 @@ def process_cpd_blockfeed(zmq_publisher_eventfeed):
                     my_latest_block = prune_my_stale_blocks(msg_data['block_index'] - 1)
                     config.CURRENT_BLOCK_INDEX = msg_data['block_index'] - 1
 
-                    #for the current last_message_index (which could have gone down after the reorg), query bluejudyd
+                    #for the current last_message_index (which could have gone down after the reorg), query czarcraftd
                     running_info = util.call_jsonrpc_api("get_running_info", abort_on_error=True)['result']
                     config.LAST_MESSAGE_INDEX = running_info['last_message_index']
                     
@@ -469,13 +469,13 @@ def process_cpd_blockfeed(zmq_publisher_eventfeed):
             clean_mempool_tx()
 
         elif my_latest_block['block_index'] > last_processed_block['block_index']:
-            #we have stale blocks (i.e. most likely a reorg happened in bluejudyd)?? this shouldn't happen, as we
+            #we have stale blocks (i.e. most likely a reorg happened in czarcraftd)?? this shouldn't happen, as we
             # should get a reorg message. Just to be on the safe side, prune back MAX_REORG_NUM_BLOCKS blocks
-            # before what bluejudyd is saying if we see this
-            logging.error("Very odd: Ahead of bluejudyd with block indexes! Pruning back %s blocks to be safe." % config.MAX_REORG_NUM_BLOCKS)
+            # before what czarcraftd is saying if we see this
+            logging.error("Very odd: Ahead of czarcraftd with block indexes! Pruning back %s blocks to be safe." % config.MAX_REORG_NUM_BLOCKS)
             my_latest_block = prune_my_stale_blocks(last_processed_block['block_index'] - config.MAX_REORG_NUM_BLOCKS)
         else:
-            #...we may be caught up (to bluejudyd), but bluejudyd may not be (to the blockchain). And if it isn't, we aren't
+            #...we may be caught up (to czarcraftd), but czarcraftd may not be (to the blockchain). And if it isn't, we aren't
             config.CAUGHT_UP = running_info['db_caught_up']
             
             #this logic here will cover a case where we shut down craftblockd, then start it up again quickly...

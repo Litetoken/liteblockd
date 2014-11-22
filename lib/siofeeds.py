@@ -57,7 +57,7 @@ class MessagesFeedServerNamespace(BaseNamespace):
         
 class SocketIOMessagesFeedServer(object):
     """
-    Funnel messages coming from bluejudyd polls to socket.io clients
+    Funnel messages coming from czarcraftd polls to socket.io clients
     """
     def __init__(self, zmq_context):
         # Dummy request object to maintain state between Namespace initialization.
@@ -318,7 +318,7 @@ class ChatFeedServerNamespace(BaseNamespace, BroadcastMixin):
 
 class SocketIOChatFeedServer(object):
     """
-    Funnel messages from bluejudy.io client chats to other clients
+    Funnel messages from czarcraft.io client chats to other clients
     """
     def __init__(self, mongo_db):
         # Dummy request object to maintain state between Namespace initialization.

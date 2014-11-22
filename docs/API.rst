@@ -34,10 +34,10 @@ Return Types
 wallet IDs
 ^^^^^^^^^^^
 
-An individual Bluejudywallet user needs a way to identify themselves to ``craftblockd`` for things like storing
+An individual Craftwallet user needs a way to identify themselves to ``craftblockd`` for things like storing
 and retrieving their wallet preferences data, and more.
 
-For this purpose, we define the concept of a wallet ID, which is simply the user's Bluejudywallet 12-word password,
+For this purpose, we define the concept of a wallet ID, which is simply the user's Craftwallet 12-word password,
 double-hashed with SHA256 and converted to base 64.
 
 
@@ -225,7 +225,7 @@ Asset Functions
 
 .. function:: get_normalized_balances(addresses)
 
-  This call augments bluejudyd's get_balances with a normalized_quantity field. It also will include any owned assets for an address, even if their balance is zero. NOTE: Does not retrieve LTC balance. Use get_address_info for that.
+  This call augments czarcraftd's get_balances with a normalized_quantity field. It also will include any owned assets for an address, even if their balance is zero. NOTE: Does not retrieve LTC balance. Use get_address_info for that.
 
   :param list addresses: List of addresses to check
   :return: List
@@ -234,7 +234,7 @@ Asset Functions
 .. function:: get_order_book_buysell(buy_asset, sell_asset, pct_fee_provided=None, pct_fee_required=None)
 
    .. deprecated:: 1.5
-      Use bluejudyd's `get_orders`
+      Use czarcraftd's `get_orders`
 
 
    :param buy_asset: Asset
@@ -275,7 +275,7 @@ Asset Functions
 .. function:: get_order_book_simple(asset1, asset2, min_pct_fee_provided=None, max_pct_fee_required=None)
 
     .. deprecated:: 1.5
-      Use bluejudyd's `get_orders`
+      Use czarcraftd's `get_orders`
 
     Easier to call version when you want all orders involving the two assets.
 
@@ -520,7 +520,7 @@ Message Functions
 
 .. function:: get_messagefeed_messages_by_index(message_indexes)
 
-  Alias for bluejudyd get_messages_by_index
+  Alias for czarcraftd get_messages_by_index
 
   :param list message_indexs: Message IDs to fetch
   :return: A list of messages
@@ -626,13 +626,13 @@ Action/Write API Function Reference
     .. deprecated:: 1.5
 
 
-.. function:: proxy_to_bluejudyd(method='', params={})
+.. function:: proxy_to_czarcraftd(method='', params={})
 
-  :param method: Method name to call in bluejudyd.
+  :param method: Method name to call in czarcraftd.
   :param params: Array of function parameters.
-  :returns: The method response from bluejudyd
+  :returns: The method response from czarcraftd
 
-  Relays a request to the bluejudyd server, with the given method and params, and returns the result. See the `bluejudyd API documentation <http://bluejudyd.readthedocs.org/en/latest/API.html>`_ for available methods.
+  Relays a request to the czarcraftd server, with the given method and params, and returns the result. See the `czarcraftd API documentation <http://czarcraftd.readthedocs.org/en/latest/API.html>`_ for available methods.
 
 .. function:: record_ltc_open_order(wallet_id, order_tx_hash)
 
@@ -663,7 +663,7 @@ The API calls documented can return any one of these objects.
 Wallet Preferences Object
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-An object that stores the Bluejudywallet preferences for the given wallet ID.
+An object that stores the Craftwallet preferences for the given wallet ID.
 
 * **num_addresses_used** (*integer*): The number of addresses utilized in the user's wallet (this
   determines how many addresses we will deterministally generate when the user logs in).

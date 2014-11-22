@@ -184,7 +184,7 @@ latex_elements = {
 # (source start file, target name, title, author, documentclass [howto/manual]).
 latex_documents = [
   ('index', 'craftblockd.tex', u'craftblockd Documentation',
-   u'Bluejudy Team', 'manual'),
+   u'Czarcraft Team', 'manual'),
 ]
 
 # The name of an image file (relative to this directory) to place at the top of
@@ -214,7 +214,7 @@ latex_documents = [
 # (source start file, name, description, authors, manual section).
 man_pages = [
     ('index', 'craftblockd', u'craftblockd Documentation',
-     [u'Bluejudy Team'], 1)
+     [u'Czarcraft Team'], 1)
 ]
 
 # If true, show URL addresses after external links.
@@ -228,7 +228,7 @@ man_pages = [
 #  dir menu entry, description, category)
 texinfo_documents = [
   ('index', 'craftblockd', u'craftblockd Documentation',
-   u'Bluejudy Team', 'craftblockd', 'Counterblock daemon.',
+   u'Czarcraft Team', 'craftblockd', 'Counterblock daemon.',
    'Miscellaneous'),
 ]
 

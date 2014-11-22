@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
-VERSION = "1.5.0" #should keep up with the bluejudywallet version it works with (for now at least)
+VERSION = "1.5.0" #should keep up with the czarcraftwallet version it works with (for now at least)
 
-DB_VERSION = 22 #a db version increment will cause craftblockd to rebuild its database off of bluejudyd 
+DB_VERSION = 22 #a db version increment will cause craftblockd to rebuild its database off of czarcraftd 
 
-CAUGHT_UP = False #atomic state variable, set to True when bluejudyd AND craftblockd are caught up
+CAUGHT_UP = False #atomic state variable, set to True when czarcraftd AND craftblockd are caught up
 
 UNIT = 100000000
 
@@ -12,8 +12,8 @@ SUBDIR_FEED_IMAGES = "feed_img" #goes under the data dir and stores retrieved fe
 
 MARKET_PRICE_DERIVE_NUM_POINTS = 8 #number of last trades over which to derive the market price (via WVAP)
 
-# FROM bluejudyd
-# NOTE: These constants must match those in bluejudyd/lib/config.py
+# FROM czarcraftd
+# NOTE: These constants must match those in czarcraftd/lib/config.py
 REGULAR_DUST_SIZE = 5430
 MULTISIG_DUST_SIZE = 5430 * 2
 ORDER_LTC_DUST_LIMIT_CUTOFF = MULTISIG_DUST_SIZE

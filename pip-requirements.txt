@@ -3,7 +3,7 @@
 #craftblockd currently uses Python 2.7 due to gevent-socketio's lack of support for Python 3
 
 #############
-#similar/same deps as with bluejudyd
+#similar/same deps as with czarcraftd
 
 appdirs==1.2.0
 #helps locate OS-specific directories (user data dir, etc)

@@ -386,7 +386,7 @@ def compile_7d_market_info(asset):
     }
 
 def compile_asset_pair_market_info():
-    """Compiles the pair-level statistics that show on the View Prices page of bluejudywallet, for instance"""
+    """Compiles the pair-level statistics that show on the View Prices page of czarcraftwallet, for instance"""
     #loop through all open orders, and compile a listing of pairs, with a count of open orders for each pair
     mongo_db = config.mongo_db
     end_dt = datetime.datetime.utcnow()

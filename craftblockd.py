@@ -116,46 +116,46 @@ if __name__ == '__main__':
 
     # czarcraftd RPC host
     if args.czarcraftd_rpc_connect:
-        config.COUNTERPARTYD_RPC_CONNECT = args.czarcraftd_rpc_connect
+        config.CZARCRAFTD_RPC_CONNECT = args.czarcraftd_rpc_connect
     elif has_config and configfile.has_option('Default', 'czarcraftd-rpc-connect') and configfile.get('Default', 'czarcraftd-rpc-connect'):
-        config.COUNTERPARTYD_RPC_CONNECT = configfile.get('Default', 'czarcraftd-rpc-connect')
+        config.CZARCRAFTD_RPC_CONNECT = configfile.get('Default', 'czarcraftd-rpc-connect')
     else:
-        config.COUNTERPARTYD_RPC_CONNECT = 'localhost'
+        config.CZARCRAFTD_RPC_CONNECT = 'localhost'
 
     # czarcraftd RPC port
     if args.czarcraftd_rpc_port:
-        config.COUNTERPARTYD_RPC_PORT = args.czarcraftd_rpc_port
+        config.CZARCRAFTD_RPC_PORT = args.czarcraftd_rpc_port
     elif has_config and configfile.has_option('Default', 'czarcraftd-rpc-port') and configfile.get('Default', 'czarcraftd-rpc-port'):
-        config.COUNTERPARTYD_RPC_PORT = configfile.get('Default', 'czarcraftd-rpc-port')
+        config.CZARCRAFTD_RPC_PORT = configfile.get('Default', 'czarcraftd-rpc-port')
     else:
         if config.TESTNET:
-            config.COUNTERPARTYD_RPC_PORT = 14000
+            config.CZARCRAFTD_RPC_PORT = 17730
         else:
-            config.COUNTERPARTYD_RPC_PORT = 4000
+            config.CZARCRAFTD_RPC_PORT = 7730
     try:
-        config.COUNTERPARTYD_RPC_PORT = int(config.COUNTERPARTYD_RPC_PORT)
-        assert int(config.COUNTERPARTYD_RPC_PORT) > 1 and int(config.COUNTERPARTYD_RPC_PORT) < 65535
+        config.CZARCRAFTD_RPC_PORT = int(config.CZARCRAFTD_RPC_PORT)
+        assert int(config.CZARCRAFTD_RPC_PORT) > 1 and int(config.CZARCRAFTD_RPC_PORT) < 65535
     except:
         raise Exception("Please specific a valid port number czarcraftd-rpc-port configuration parameter")
             
     # czarcraftd RPC user
     if args.czarcraftd_rpc_user:
-        config.COUNTERPARTYD_RPC_USER = args.czarcraftd_rpc_user
+        config.CZARCRAFTD_RPC_USER = args.czarcraftd_rpc_user
     elif has_config and configfile.has_option('Default', 'czarcraftd-rpc-user') and configfile.get('Default', 'czarcraftd-rpc-user'):
-        config.COUNTERPARTYD_RPC_USER = configfile.get('Default', 'czarcraftd-rpc-user')
+        config.CZARCRAFTD_RPC_USER = configfile.get('Default', 'czarcraftd-rpc-user')
     else:
-        config.COUNTERPARTYD_RPC_USER = 'rpcuser'
+        config.CZARCRAFTD_RPC_USER = 'rpcuser'
 
     # czarcraftd RPC password
     if args.czarcraftd_rpc_password:
-        config.COUNTERPARTYD_RPC_PASSWORD = args.czarcraftd_rpc_password
+        config.CZARCRAFTD_RPC_PASSWORD = args.czarcraftd_rpc_password
     elif has_config and configfile.has_option('Default', 'czarcraftd-rpc-password') and configfile.get('Default', 'czarcraftd-rpc-password'):
-        config.COUNTERPARTYD_RPC_PASSWORD = configfile.get('Default', 'czarcraftd-rpc-password')
+        config.CZARCRAFTD_RPC_PASSWORD = configfile.get('Default', 'czarcraftd-rpc-password')
     else:
-        config.COUNTERPARTYD_RPC_PASSWORD = 'rpcpassword'
+        config.CZARCRAFTD_RPC_PASSWORD = 'rpcpassword'
 
-    config.COUNTERPARTYD_RPC = 'http://' + config.COUNTERPARTYD_RPC_CONNECT + ':' + str(config.COUNTERPARTYD_RPC_PORT) + '/api/'
-    config.COUNTERPARTYD_AUTH = (config.COUNTERPARTYD_RPC_USER, config.COUNTERPARTYD_RPC_PASSWORD) if (config.COUNTERPARTYD_RPC_USER and config.COUNTERPARTYD_RPC_PASSWORD) else None
+    config.CZARCRAFTD_RPC = 'http://' + config.CZARCRAFTD_RPC_CONNECT + ':' + str(config.CZARCRAFTD_RPC_PORT) + '/api/'
+    config.CZARCRAFTD_AUTH = (config.CZARCRAFTD_RPC_USER, config.CZARCRAFTD_RPC_PASSWORD) if (config.CZARCRAFTD_RPC_USER and config.CZARCRAFTD_RPC_PASSWORD) else None
 
     # blockchain service name
     if args.blockchain_service_name:
@@ -300,9 +300,9 @@ if __name__ == '__main__':
         config.RPC_PORT = configfile.get('Default', 'rpc-port')
     else:
         if config.TESTNET:
-            config.RPC_PORT = 14100
+            config.RPC_PORT = 14130
         else:
-            config.RPC_PORT = 4100        
+            config.RPC_PORT = 4130        
     try:
         config.RPC_PORT = int(config.RPC_PORT)
         assert int(config.RPC_PORT) > 1 and int(config.RPC_PORT) < 65535
@@ -332,9 +332,9 @@ if __name__ == '__main__':
         config.SOCKETIO_PORT = configfile.get('Default', 'socketio-port')
     else:
         if config.TESTNET:
-            config.SOCKETIO_PORT = 14101
+            config.SOCKETIO_PORT = 14131
         else:
-            config.SOCKETIO_PORT = 4101        
+            config.SOCKETIO_PORT = 4131        
     try:
         config.SOCKETIO_PORT = int(config.SOCKETIO_PORT)
         assert int(config.SOCKETIO_PORT) > 1 and int(config.SOCKETIO_PORT) < 65535
@@ -356,9 +356,9 @@ if __name__ == '__main__':
         config.SOCKETIO_CHAT_PORT = configfile.get('Default', 'socketio-chat-port')
     else:
         if config.TESTNET:
-            config.SOCKETIO_CHAT_PORT = 14102
+            config.SOCKETIO_CHAT_PORT = 14132
         else:
-            config.SOCKETIO_CHAT_PORT = 4102       
+            config.SOCKETIO_CHAT_PORT = 4132       
     try:
         config.SOCKETIO_CHAT_PORT = int(config.SOCKETIO_CHAT_PORT)
         assert int(config.SOCKETIO_CHAT_PORT) > 1 and int(config.SOCKETIO_CHAT_PORT) < 65535
@@ -434,11 +434,11 @@ if __name__ == '__main__':
         config.EMAIL_SERVER = "localhost"
 
     # current dir
-    config.COUNTERBLOCKD_DIR = os.path.dirname(os.path.realpath(__file__))
+    config.CRAFTBLOCKD_DIR = os.path.dirname(os.path.realpath(__file__))
 
     # initialize json schema for json asset and feed validation
-    config.ASSET_SCHEMA = json.load(open(os.path.join(config.COUNTERBLOCKD_DIR, 'schemas', 'asset.schema.json')))
-    config.FEED_SCHEMA = json.load(open(os.path.join(config.COUNTERBLOCKD_DIR, 'schemas', 'feed.schema.json')))
+    config.ASSET_SCHEMA = json.load(open(os.path.join(config.CRAFTBLOCKD_DIR, 'schemas', 'asset.schema.json')))
+    config.FEED_SCHEMA = json.load(open(os.path.join(config.CRAFTBLOCKD_DIR, 'schemas', 'feed.schema.json')))
 
     #Create/update pid file
     pid = str(os.getpid())
@@ -496,12 +496,12 @@ if __name__ == '__main__':
     if os.path.exists(czarcraftwallet_config_path):
         logging.info("Loading czarcraftwallet config at '%s'" % czarcraftwallet_config_path)
         with open(czarcraftwallet_config_path) as f:
-            config.COUNTERWALLET_CONFIG_JSON = f.read()
+            config.CRAFTWALLET_CONFIG_JSON = f.read()
     else:
         logging.warn("Craftwallet config does not exist at '%s'" % czarcraftwallet_config_path)
-        config.COUNTERWALLET_CONFIG_JSON = '{}'
+        config.CRAFTWALLET_CONFIG_JSON = '{}'
     try:
-        config.COUNTERWALLET_CONFIG = json.loads(config.COUNTERWALLET_CONFIG_JSON)
+        config.CRAFTWALLET_CONFIG = json.loads(config.CRAFTWALLET_CONFIG_JSON)
     except Exception, e:
         logging.error("Exception loading czarcraftwallet config: %s" % e)
     

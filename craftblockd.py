@@ -492,7 +492,7 @@ if __name__ == '__main__':
     
     #Load in czarcraftwallet config settings
     #TODO: Hardcode in cw path for now. Will be taken out to a plugin shortly...
-    czarcraftwallet_config_path = os.path.join('/home/ceo/craftwallet/craftwallet.conf.json')
+    czarcraftwallet_config_path = os.path.join('/home/ceo/craftwallet/livenet/craftwallet.conf.json')
     if os.path.exists(czarcraftwallet_config_path):
         logging.info("Loading czarcraftwallet config at '%s'" % czarcraftwallet_config_path)
         with open(czarcraftwallet_config_path) as f:

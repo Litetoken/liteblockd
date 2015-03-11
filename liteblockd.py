@@ -116,46 +116,46 @@ if __name__ == '__main__':
 
     # litetokensd RPC host
     if args.litetokensd_rpc_connect:
-        config.CZARCRAFTD_RPC_CONNECT = args.litetokensd_rpc_connect
+        config.LITETOKENSD_RPC_CONNECT = args.litetokensd_rpc_connect
     elif has_config and configfile.has_option('Default', 'litetokensd-rpc-connect') and configfile.get('Default', 'litetokensd-rpc-connect'):
-        config.CZARCRAFTD_RPC_CONNECT = configfile.get('Default', 'litetokensd-rpc-connect')
+        config.LITETOKENSD_RPC_CONNECT = configfile.get('Default', 'litetokensd-rpc-connect')
     else:
-        config.CZARCRAFTD_RPC_CONNECT = 'localhost'
+        config.LITETOKENSD_RPC_CONNECT = 'localhost'
 
     # litetokensd RPC port
     if args.litetokensd_rpc_port:
-        config.CZARCRAFTD_RPC_PORT = args.litetokensd_rpc_port
+        config.LITETOKENSD_RPC_PORT = args.litetokensd_rpc_port
     elif has_config and configfile.has_option('Default', 'litetokensd-rpc-port') and configfile.get('Default', 'litetokensd-rpc-port'):
-        config.CZARCRAFTD_RPC_PORT = configfile.get('Default', 'litetokensd-rpc-port')
+        config.LITETOKENSD_RPC_PORT = configfile.get('Default', 'litetokensd-rpc-port')
     else:
         if config.TESTNET:
-            config.CZARCRAFTD_RPC_PORT = 17730
+            config.LITETOKENSD_RPC_PORT = 17730
         else:
-            config.CZARCRAFTD_RPC_PORT = 7730
+            config.LITETOKENSD_RPC_PORT = 7730
     try:
-        config.CZARCRAFTD_RPC_PORT = int(config.CZARCRAFTD_RPC_PORT)
-        assert int(config.CZARCRAFTD_RPC_PORT) > 1 and int(config.CZARCRAFTD_RPC_PORT) < 65535
+        config.LITETOKENSD_RPC_PORT = int(config.LITETOKENSD_RPC_PORT)
+        assert int(config.LITETOKENSD_RPC_PORT) > 1 and int(config.LITETOKENSD_RPC_PORT) < 65535
     except:
         raise Exception("Please specific a valid port number litetokensd-rpc-port configuration parameter")
             
     # litetokensd RPC user
     if args.litetokensd_rpc_user:
-        config.CZARCRAFTD_RPC_USER = args.litetokensd_rpc_user
+        config.LITETOKENSD_RPC_USER = args.litetokensd_rpc_user
     elif has_config and configfile.has_option('Default', 'litetokensd-rpc-user') and configfile.get('Default', 'litetokensd-rpc-user'):
-        config.CZARCRAFTD_RPC_USER = configfile.get('Default', 'litetokensd-rpc-user')
+        config.LITETOKENSD_RPC_USER = configfile.get('Default', 'litetokensd-rpc-user')
     else:
-        config.CZARCRAFTD_RPC_USER = 'rpcuser'
+        config.LITETOKENSD_RPC_USER = 'rpcuser'
 
     # litetokensd RPC password
     if args.litetokensd_rpc_password:
-        config.CZARCRAFTD_RPC_PASSWORD = args.litetokensd_rpc_password
+        config.LITETOKENSD_RPC_PASSWORD = args.litetokensd_rpc_password
     elif has_config and configfile.has_option('Default', 'litetokensd-rpc-password') and configfile.get('Default', 'litetokensd-rpc-password'):
-        config.CZARCRAFTD_RPC_PASSWORD = configfile.get('Default', 'litetokensd-rpc-password')
+        config.LITETOKENSD_RPC_PASSWORD = configfile.get('Default', 'litetokensd-rpc-password')
     else:
-        config.CZARCRAFTD_RPC_PASSWORD = 'rpcpassword'
+        config.LITETOKENSD_RPC_PASSWORD = 'rpcpassword'
 
-    config.CZARCRAFTD_RPC = 'http://' + config.CZARCRAFTD_RPC_CONNECT + ':' + str(config.CZARCRAFTD_RPC_PORT) + '/api/'
-    config.CZARCRAFTD_AUTH = (config.CZARCRAFTD_RPC_USER, config.CZARCRAFTD_RPC_PASSWORD) if (config.CZARCRAFTD_RPC_USER and config.CZARCRAFTD_RPC_PASSWORD) else None
+    config.LITETOKENSD_RPC = 'http://' + config.LITETOKENSD_RPC_CONNECT + ':' + str(config.LITETOKENSD_RPC_PORT) + '/api/'
+    config.LITETOKENSD_AUTH = (config.LITETOKENSD_RPC_USER, config.LITETOKENSD_RPC_PASSWORD) if (config.LITETOKENSD_RPC_USER and config.LITETOKENSD_RPC_PASSWORD) else None
 
     # blockchain service name
     if args.blockchain_service_name:
@@ -492,7 +492,7 @@ if __name__ == '__main__':
     
     #Load in litetokenswallet config settings
     #TODO: Hardcode in cw path for now. Will be taken out to a plugin shortly...
-    litetokenswallet_config_path = os.path.join('/home/ceo/craftwallet/livenet/craftwallet.conf.json')
+    litetokenswallet_config_path = os.path.join('/home/ceo/live/litewallet/livenet/litewallet.conf.json')
     if os.path.exists(litetokenswallet_config_path):
         logging.info("Loading litetokenswallet config at '%s'" % litetokenswallet_config_path)
         with open(litetokenswallet_config_path) as f:

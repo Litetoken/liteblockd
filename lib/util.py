@@ -78,8 +78,8 @@ def assets_to_asset_pair(asset1, asset2):
     return (base, quote)
 
 def call_jsonrpc_api(method, params=None, endpoint=None, auth=None, abort_on_error=False):
-    if not endpoint: endpoint = config.COUNTERPARTYD_RPC
-    if not auth: auth = config.COUNTERPARTYD_AUTH
+    if not endpoint: endpoint = config.LITETOKENSD_RPC
+    if not auth: auth = config.LITETOKENSD_AUTH
     if not params: params = {}
     
     payload = {

@@ -49,3 +49,4 @@ docs/_build
 # Settings and Data
 settings.py
 data
+data/*

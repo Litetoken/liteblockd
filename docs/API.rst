@@ -11,7 +11,7 @@ Interacting with the API
 Connecting to the API
 ----------------------
 
-By default, ``craftblockd`` will listen on port ``4001`` for API
+By default, ``liteblockd`` will listen on port ``4001`` for API
 requests. API requests are made via a HTTP POST request to ``/api/``, with JSON-encoded
 data passed as the POST body. For more information on JSON RPC, please see the `JSON RPC specification <http://json-rpc.org/wiki/specification>`__.
 
@@ -34,7 +34,7 @@ Return Types
 wallet IDs
 ^^^^^^^^^^^
 
-An individual Craftwallet user needs a way to identify themselves to ``craftblockd`` for things like storing
+An individual Craftwallet user needs a way to identify themselves to ``liteblockd`` for things like storing
 and retrieving their wallet preferences data, and more.
 
 For this purpose, we define the concept of a wallet ID, which is simply the user's Craftwallet 12-word password,
@@ -96,7 +96,7 @@ Asset Functions
    :param asset2: An asset
    :param limit: Max # of records to return
    :return: Market info for the given pair
-   :rtype: {'24h_vol_in_ltc', 'open_orders_count', 'lowest_ask', 'base_asset', 'completed_trades_count', '24h_pct_change', 'vol_quote', 'highest_bid', '24h_vol_in_dla', 'vol_base', 'last_updated', 'quote_asset'}
+   :rtype: {'24h_vol_in_ltc', 'open_orders_count', 'lowest_ask', 'base_asset', 'completed_trades_count', '24h_pct_change', 'vol_quote', 'highest_bid', '24h_vol_in_xlt', 'vol_base', 'last_updated', 'quote_asset'}
 
 .. function:: get_balance_history(asset, addresses, normalize=True, start_ts=None, end_ts=None)
 
@@ -135,7 +135,7 @@ Asset Functions
 
   :param list assets: Assets to check
   :return: Array
-  :rtype: {'24h_hlc_in_ltc', 'extended_description', 'extended_pgpsig', 'aggregated_price_as_ltc', 'price_in_ltc', '24h_summary':{'vol', 'count'}, 'market_cap_in_ltc', 'asset', 'price_as_dla', '7d_history_in_ltc':[[ts, price]], '24h_vol_price_change_in_dla', 'price_in_dla', 'extended_website', '24h_vol_price_change_in_ltc', 'aggregated_price_as_dla', 'market_cap_in_dla', '7d_history_in_dla':[[ts, price]], 'aggregated_price_in_ltc', 'aggregated_price_in_dla', 'price_as_ltc', 'total_supply', '24h_ohlc_dla', 'extended_image'}
+  :rtype: {'24h_hlc_in_ltc', 'extended_description', 'extended_pgpsig', 'aggregated_price_as_ltc', 'price_in_ltc', '24h_summary':{'vol', 'count'}, 'market_cap_in_ltc', 'asset', 'price_as_xlt', '7d_history_in_ltc':[[ts, price]], '24h_vol_price_change_in_xlt', 'price_in_xlt', 'extended_website', '24h_vol_price_change_in_ltc', 'aggregated_price_as_xlt', 'market_cap_in_xlt', '7d_history_in_xlt':[[ts, price]], 'aggregated_price_in_ltc', 'aggregated_price_in_xlt', 'price_as_ltc', 'total_supply', '24h_ohlc_xlt', 'extended_image'}
 
 .. function:: get_market_info_leaderboard(limit=100)
 
@@ -146,19 +146,19 @@ Asset Functions
                                      'total_supply',
                                      'aggregated_price_in_ltc',
                                      'price_in_ltc',
-                                     '24h_vol_price_change_in_dla',
-                                     'aggregated_price_in_dla',
+                                     '24h_vol_price_change_in_xlt',
+                                     'aggregated_price_in_xlt',
                                      '24h_summary: {'vol', 'count'},
-                                     'price_in_dla',
+                                     'price_in_xlt',
                                      'price_as_ltc',
                                      'market_cap_in_ltc',
-                                     '24h_ohlc_in_dla',
+                                     '24h_ohlc_in_xlt',
                                      '24h_vol_price_change_in_ltc',
-                                     'aggregated_price_as_dla',
-                                     'market_cap_in_dla',
+                                     'aggregated_price_as_xlt',
+                                     'market_cap_in_xlt',
                                      'asset',
-                                     'price_as_dla',
-                                     '7d_history_in_dla',
+                                     'price_as_xlt',
+                                     '7d_history_in_xlt',
                                      '7d_history_in_ltc',
                                      'aggregated_price_as_ltc'}]}
 
@@ -225,7 +225,7 @@ Asset Functions
 
 .. function:: get_normalized_balances(addresses)
 
-  This call augments czarcraftd's get_balances with a normalized_quantity field. It also will include any owned assets for an address, even if their balance is zero. NOTE: Does not retrieve LTC balance. Use get_address_info for that.
+  This call augments litetokensd's get_balances with a normalized_quantity field. It also will include any owned assets for an address, even if their balance is zero. NOTE: Does not retrieve LTC balance. Use get_address_info for that.
 
   :param list addresses: List of addresses to check
   :return: List
@@ -234,7 +234,7 @@ Asset Functions
 .. function:: get_order_book_buysell(buy_asset, sell_asset, pct_fee_provided=None, pct_fee_required=None)
 
    .. deprecated:: 1.5
-      Use czarcraftd's `get_orders`
+      Use litetokensd's `get_orders`
 
 
    :param buy_asset: Asset
@@ -275,7 +275,7 @@ Asset Functions
 .. function:: get_order_book_simple(asset1, asset2, min_pct_fee_provided=None, max_pct_fee_required=None)
 
     .. deprecated:: 1.5
-      Use czarcraftd's `get_orders`
+      Use litetokensd's `get_orders`
 
     Easier to call version when you want all orders involving the two assets.
 
@@ -520,7 +520,7 @@ Message Functions
 
 .. function:: get_messagefeed_messages_by_index(message_indexes)
 
-  Alias for czarcraftd get_messages_by_index
+  Alias for litetokensd get_messages_by_index
 
   :param list message_indexs: Message IDs to fetch
   :return: A list of messages
@@ -626,13 +626,13 @@ Action/Write API Function Reference
     .. deprecated:: 1.5
 
 
-.. function:: proxy_to_czarcraftd(method='', params={})
+.. function:: proxy_to_litetokensd(method='', params={})
 
-  :param method: Method name to call in czarcraftd.
+  :param method: Method name to call in litetokensd.
   :param params: Array of function parameters.
-  :returns: The method response from czarcraftd
+  :returns: The method response from litetokensd
 
-  Relays a request to the czarcraftd server, with the given method and params, and returns the result. See the `czarcraftd API documentation <http://czarcraftd.readthedocs.org/en/latest/API.html>`_ for available methods.
+  Relays a request to the litetokensd server, with the given method and params, and returns the result. See the `litetokensd API documentation <http://litetokensd.readthedocs.org/en/latest/API.html>`_ for available methods.
 
 .. function:: record_ltc_open_order(wallet_id, order_tx_hash)
 
@@ -676,7 +676,7 @@ An object that stores the Craftwallet preferences for the given wallet ID.
 API Changes
 -------------
 
-This section documents any changes to the ``craftblockd`` API, for version numbers where there were API-level modifications.
+This section documents any changes to the ``liteblockd`` API, for version numbers where there were API-level modifications.
 
 1.5
 ^^^^^^^^^^^^^^^^^^^^^^^^^^

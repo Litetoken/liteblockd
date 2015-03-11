@@ -84,16 +84,16 @@ def calc_price_change(open, close):
     return float((D(100) * (D(close) - D(open)) / D(open)))            
 
 def get_price_primatives(start_dt=None, end_dt=None):
-    mps_dla_ltc = get_market_price_summary(config.DLA, config.LTC, start_dt=start_dt, end_dt=end_dt)
-    dla_ltc_price = mps_dla_ltc['market_price'] if mps_dla_ltc else None # == DLA/LTC
-    ltc_dla_price = calc_inverse(mps_dla_ltc['market_price']) if mps_dla_ltc else None #LTC/DLA
-    return mps_dla_ltc, dla_ltc_price, ltc_dla_price
+    mps_xlt_ltc = get_market_price_summary(config.XLT, config.LTC, start_dt=start_dt, end_dt=end_dt)
+    xlt_ltc_price = mps_xlt_ltc['market_price'] if mps_xlt_ltc else None # == XLT/LTC
+    ltc_xlt_price = calc_inverse(mps_xlt_ltc['market_price']) if mps_xlt_ltc else None #LTC/XLT
+    return mps_xlt_ltc, xlt_ltc_price, ltc_xlt_price
 
 def get_asset_info(asset, at_dt=None):
     mongo_db = config.mongo_db
     asset_info = mongo_db.tracked_assets.find_one({'asset': asset})
     
-    if asset not in (config.DLA, config.LTC) and at_dt and asset_info['_at_block_time'] > at_dt:
+    if asset not in (config.XLT, config.LTC) and at_dt and asset_info['_at_block_time'] > at_dt:
         #get the asset info at or before the given at_dt datetime
         for e in reversed(asset_info['_history']): #newest to oldest
             if e['_at_block_time'] <= at_dt:
@@ -104,7 +104,7 @@ def get_asset_info(asset, at_dt=None):
         if asset_info is None: return None
         assert asset_info['_at_block_time'] <= at_dt
       
-    #modify some of the properties of the returned asset_info for LTC and DLA
+    #modify some of the properties of the returned asset_info for LTC and XLT
     if asset == config.LTC:
         if at_dt:
             start_block_index, end_block_index = util.get_block_indexes_for_dates(end_dt=at_dt)
@@ -113,94 +113,94 @@ def get_asset_info(asset, at_dt=None):
         else:
             asset_info['total_issued'] = util_litecoin.get_ltc_supply(normalize=False)
             asset_info['total_issued_normalized'] = util_litecoin.normalize_quantity(asset_info['total_issued'])
-    elif asset == config.DLA:
+    elif asset == config.XLT:
         #BUG: this does not take end_dt (if specified) into account. however, the deviation won't be too big
-        # as DLA doesn't deflate quickly at all, and shouldn't matter that much since there weren't any/much trades
+        # as XLT doesn't deflate quickly at all, and shouldn't matter that much since there weren't any/much trades
         # before the end of the burn period (which is what is involved with how we use at_dt with currently)
-        asset_info['total_issued'] = util.call_jsonrpc_api("get_dla_supply", abort_on_error=True)['result']
+        asset_info['total_issued'] = util.call_jsonrpc_api("get_xlt_supply", abort_on_error=True)['result']
         asset_info['total_issued_normalized'] = util_litecoin.normalize_quantity(asset_info['total_issued'])
     if not asset_info:
         raise Exception("Invalid asset: %s" % asset)
     return asset_info
 
-def get_dla_ltc_price_info(asset, mps_dla_ltc, dla_ltc_price, ltc_dla_price, with_last_trades=0, start_dt=None, end_dt=None):
-    if asset not in [config.LTC, config.DLA]:
-        #get price data for both the asset with DLA, as well as LTC
-        price_summary_in_dla = get_market_price_summary(asset, config.DLA,
+def get_xlt_ltc_price_info(asset, mps_xlt_ltc, xlt_ltc_price, ltc_xlt_price, with_last_trades=0, start_dt=None, end_dt=None):
+    if asset not in [config.LTC, config.XLT]:
+        #get price data for both the asset with XLT, as well as LTC
+        price_summary_in_xlt = get_market_price_summary(asset, config.XLT,
             with_last_trades=with_last_trades, start_dt=start_dt, end_dt=end_dt)
         price_summary_in_ltc = get_market_price_summary(asset, config.LTC,
             with_last_trades=with_last_trades, start_dt=start_dt, end_dt=end_dt)
 
-        #aggregated (averaged) price (expressed as DLA) for the asset on both the DLA and LTC markets
-        if price_summary_in_dla: # no trade data
-            price_in_dla = price_summary_in_dla['market_price']
-            if dla_ltc_price:
-                aggregated_price_in_dla = float(((D(price_summary_in_dla['market_price']) + D(dla_ltc_price)) / D(2)))
-            else: aggregated_price_in_dla = None
+        #aggregated (averaged) price (expressed as XLT) for the asset on both the XLT and LTC markets
+        if price_summary_in_xlt: # no trade data
+            price_in_xlt = price_summary_in_xlt['market_price']
+            if xlt_ltc_price:
+                aggregated_price_in_xlt = float(((D(price_summary_in_xlt['market_price']) + D(xlt_ltc_price)) / D(2)))
+            else: aggregated_price_in_xlt = None
         else:
-            price_in_dla = None
-            aggregated_price_in_dla = None
+            price_in_xlt = None
+            aggregated_price_in_xlt = None
             
         if price_summary_in_ltc: # no trade data
             price_in_ltc = price_summary_in_ltc['market_price']
-            if ltc_dla_price:
-                aggregated_price_in_ltc = float(((D(price_summary_in_ltc['market_price']) + D(ltc_dla_price)) / D(2)))
+            if ltc_xlt_price:
+                aggregated_price_in_ltc = float(((D(price_summary_in_ltc['market_price']) + D(ltc_xlt_price)) / D(2)))
             else: aggregated_price_in_ltc = None
         else:
             aggregated_price_in_ltc = None
             price_in_ltc = None
     else:
-        #here we take the normal DLA/LTC pair, and invert it to LTC/DLA, to get DLA's data in terms of a LTC base
-        # (this is the only area we do this, as LTC/DLA is NOT standard pair ordering)
-        price_summary_in_dla = mps_dla_ltc #might be None
-        price_summary_in_ltc = copy.deepcopy(mps_dla_ltc) if mps_dla_ltc else None #must invert this -- might be None
+        #here we take the normal XLT/LTC pair, and invert it to LTC/XLT, to get XLT's data in terms of a LTC base
+        # (this is the only area we do this, as LTC/XLT is NOT standard pair ordering)
+        price_summary_in_xlt = mps_xlt_ltc #might be None
+        price_summary_in_ltc = copy.deepcopy(mps_xlt_ltc) if mps_xlt_ltc else None #must invert this -- might be None
         if price_summary_in_ltc:
             price_summary_in_ltc['market_price'] = calc_inverse(price_summary_in_ltc['market_price'])
             price_summary_in_ltc['base_asset'] = config.LTC
-            price_summary_in_ltc['quote_asset'] = config.DLA
+            price_summary_in_ltc['quote_asset'] = config.XLT
             for i in xrange(len(price_summary_in_ltc['last_trades'])):
                 #[0]=block_time, [1]=unit_price, [2]=base_quantity_normalized, [3]=quote_quantity_normalized, [4]=block_index
                 price_summary_in_ltc['last_trades'][i][1] = calc_inverse(price_summary_in_ltc['last_trades'][i][1])
                 price_summary_in_ltc['last_trades'][i][2], price_summary_in_ltc['last_trades'][i][3] = \
                     price_summary_in_ltc['last_trades'][i][3], price_summary_in_ltc['last_trades'][i][2] #swap
-        if asset == config.DLA:
-            price_in_dla = 1.0
+        if asset == config.XLT:
+            price_in_xlt = 1.0
             price_in_ltc = price_summary_in_ltc['market_price'] if price_summary_in_ltc else None
-            aggregated_price_in_dla = 1.0
-            aggregated_price_in_ltc = ltc_dla_price #might be None
+            aggregated_price_in_xlt = 1.0
+            aggregated_price_in_ltc = ltc_xlt_price #might be None
         else:
             assert asset == config.LTC
-            price_in_dla = price_summary_in_dla['market_price'] if price_summary_in_dla else None
+            price_in_xlt = price_summary_in_xlt['market_price'] if price_summary_in_xlt else None
             price_in_ltc = 1.0
-            aggregated_price_in_dla = dla_ltc_price #might be None
+            aggregated_price_in_xlt = xlt_ltc_price #might be None
             aggregated_price_in_ltc = 1.0
-    return (price_summary_in_dla, price_summary_in_ltc, price_in_dla, price_in_ltc, aggregated_price_in_dla, aggregated_price_in_ltc)
+    return (price_summary_in_xlt, price_summary_in_ltc, price_in_xlt, price_in_ltc, aggregated_price_in_xlt, aggregated_price_in_ltc)
     
-def calc_market_cap(asset_info, price_in_dla, price_in_ltc):
-    market_cap_in_dla = float( (D(asset_info['total_issued_normalized']) / D(price_in_dla))) if price_in_dla else None
+def calc_market_cap(asset_info, price_in_xlt, price_in_ltc):
+    market_cap_in_xlt = float( (D(asset_info['total_issued_normalized']) / D(price_in_xlt))) if price_in_xlt else None
     market_cap_in_ltc = float( (D(asset_info['total_issued_normalized']) / D(price_in_ltc))) if price_in_ltc else None
-    return market_cap_in_dla, market_cap_in_ltc
+    return market_cap_in_xlt, market_cap_in_ltc
 
-def compile_summary_market_info(asset, mps_dla_ltc, dla_ltc_price, ltc_dla_price):        
+def compile_summary_market_info(asset, mps_xlt_ltc, xlt_ltc_price, ltc_xlt_price):        
     """Returns information related to capitalization, volume, etc for the supplied asset(s)
-    NOTE: in_ltc == base asset is LTC, in_dla == base asset is DLA
+    NOTE: in_ltc == base asset is LTC, in_xlt == base asset is XLT
     @param assets: A list of one or more assets
     """
     asset_info = get_asset_info(asset)
-    (price_summary_in_dla, price_summary_in_ltc, price_in_dla, price_in_ltc, aggregated_price_in_dla, aggregated_price_in_ltc
-    ) = get_dla_ltc_price_info(asset, mps_dla_ltc, dla_ltc_price, ltc_dla_price, with_last_trades=30)
-    market_cap_in_dla, market_cap_in_ltc = calc_market_cap(asset_info, price_in_dla, price_in_ltc)
+    (price_summary_in_xlt, price_summary_in_ltc, price_in_xlt, price_in_ltc, aggregated_price_in_xlt, aggregated_price_in_ltc
+    ) = get_xlt_ltc_price_info(asset, mps_xlt_ltc, xlt_ltc_price, ltc_xlt_price, with_last_trades=30)
+    market_cap_in_xlt, market_cap_in_ltc = calc_market_cap(asset_info, price_in_xlt, price_in_ltc)
     return {
-        'price_in_{}'.format(config.DLA.lower()): price_in_dla, #current price of asset vs DLA (e.g. how many units of asset for 1 unit DLA)
+        'price_in_{}'.format(config.XLT.lower()): price_in_xlt, #current price of asset vs XLT (e.g. how many units of asset for 1 unit XLT)
         'price_in_{}'.format(config.LTC.lower()): price_in_ltc, #current price of asset vs LTC (e.g. how many units of asset for 1 unit LTC)
-        'price_as_{}'.format(config.DLA.lower()): calc_inverse(price_in_dla) if price_in_dla else None, #current price of asset AS DLA
+        'price_as_{}'.format(config.XLT.lower()): calc_inverse(price_in_xlt) if price_in_xlt else None, #current price of asset AS XLT
         'price_as_{}'.format(config.LTC.lower()): calc_inverse(price_in_ltc) if price_in_ltc else None, #current price of asset AS LTC
-        'aggregated_price_in_{}'.format(config.DLA.lower()): aggregated_price_in_dla, 
+        'aggregated_price_in_{}'.format(config.XLT.lower()): aggregated_price_in_xlt, 
         'aggregated_price_in_{}'.format(config.LTC.lower()): aggregated_price_in_ltc,
-        'aggregated_price_as_{}'.format(config.DLA.lower()): calc_inverse(aggregated_price_in_dla) if aggregated_price_in_dla else None, 
+        'aggregated_price_as_{}'.format(config.XLT.lower()): calc_inverse(aggregated_price_in_xlt) if aggregated_price_in_xlt else None, 
         'aggregated_price_as_{}'.format(config.LTC.lower()): calc_inverse(aggregated_price_in_ltc) if aggregated_price_in_ltc else None,
         'total_supply': asset_info['total_issued_normalized'], 
-        'market_cap_in_{}'.format(config.DLA.lower()): market_cap_in_dla,
+        'market_cap_in_{}'.format(config.XLT.lower()): market_cap_in_xlt,
         'market_cap_in_{}'.format(config.LTC.lower()): market_cap_in_ltc,
     }
 
@@ -210,7 +210,7 @@ def compile_24h_market_info(asset):
     mongo_db = config.mongo_db
 
     #perform aggregation to get 24h statistics
-    #TOTAL volume and count across all trades for the asset (on ALL markets, not just DLA and LTC pairings)
+    #TOTAL volume and count across all trades for the asset (on ALL markets, not just XLT and LTC pairings)
     _24h_vols = {'vol': 0, 'count': 0}
     _24h_vols_as_base = mongo_db.trades.aggregate([
         {"$match": {
@@ -245,11 +245,11 @@ def compile_24h_market_info(asset):
     _24h_vols['vol'] = _24h_vols_as_base.get('vol', 0) + _24h_vols_as_quote.get('vol', 0) 
     _24h_vols['count'] = _24h_vols_as_base.get('count', 0) + _24h_vols_as_quote.get('count', 0) 
     
-    #DLA market volume with stats
-    if asset != config.DLA:
-        _24h_ohlc_in_dla = mongo_db.trades.aggregate([
+    #XLT market volume with stats
+    if asset != config.XLT:
+        _24h_ohlc_in_xlt = mongo_db.trades.aggregate([
             {"$match": {
-                "base_asset": config.DLA,
+                "base_asset": config.XLT,
                 "quote_asset": asset,
                 "block_time": {"$gte": start_dt_1d } }},
             {"$project": {
@@ -266,11 +266,11 @@ def compile_24h_market_info(asset):
                 "count": {"$sum": 1},
             }}
         ])
-        _24h_ohlc_in_dla = {} if not _24h_ohlc_in_dla['ok'] \
-            or not len(_24h_ohlc_in_dla['result']) else _24h_ohlc_in_dla['result'][0]
-        if _24h_ohlc_in_dla: del _24h_ohlc_in_dla['_id']
+        _24h_ohlc_in_xlt = {} if not _24h_ohlc_in_xlt['ok'] \
+            or not len(_24h_ohlc_in_xlt['result']) else _24h_ohlc_in_xlt['result'][0]
+        if _24h_ohlc_in_xlt: del _24h_ohlc_in_xlt['_id']
     else:
-        _24h_ohlc_in_dla = {}
+        _24h_ohlc_in_xlt = {}
         
     #LTC market volume with stats
     if asset != config.LTC:
@@ -302,12 +302,12 @@ def compile_24h_market_info(asset):
     return {
         '24h_summary': _24h_vols,
         #^ total quantity traded of that asset in all markets in last 24h
-        '24h_ohlc_in_{}'.format(config.DLA.lower()): _24h_ohlc_in_dla,
+        '24h_ohlc_in_{}'.format(config.XLT.lower()): _24h_ohlc_in_xlt,
         #^ quantity of asset traded with LTC in last 24h
         '24h_ohlc_in_{}'.format(config.LTC.lower()): _24h_ohlc_in_ltc,
-        #^ quantity of asset traded with DLA in last 24h
-        '24h_vol_price_change_in_{}'.format(config.DLA.lower()): calc_price_change(_24h_ohlc_in_dla['open'], _24h_ohlc_in_dla['close'])
-            if _24h_ohlc_in_dla else None,
+        #^ quantity of asset traded with XLT in last 24h
+        '24h_vol_price_change_in_{}'.format(config.XLT.lower()): calc_price_change(_24h_ohlc_in_xlt['open'], _24h_ohlc_in_xlt['close'])
+            if _24h_ohlc_in_xlt else None,
         #^ aggregated price change from 24h ago to now, expressed as a signed float (e.g. .54 is +54%, -1.12 is -112%)
         '24h_vol_price_change_in_{}'.format(config.LTC.lower()): calc_price_change(_24h_ohlc_in_ltc['open'], _24h_ohlc_in_ltc['close'])
             if _24h_ohlc_in_ltc else None,
@@ -317,11 +317,11 @@ def compile_7d_market_info(asset):
     mongo_db = config.mongo_db       
     start_dt_7d = datetime.datetime.utcnow() - datetime.timedelta(days=7)
 
-    #get DLA and LTC market summarized trades over a 7d period (quantize to hour long slots)
-    _7d_history_in_dla = None # dla/asset market (or dla/ltc for dla or ltc)
-    _7d_history_in_ltc = None # ltc/asset market (or ltc/dla for dla or ltc)
-    if asset not in [config.LTC, config.DLA]:
-        for a in [config.DLA, config.LTC]:
+    #get XLT and LTC market summarized trades over a 7d period (quantize to hour long slots)
+    _7d_history_in_xlt = None # xlt/asset market (or xlt/ltc for xlt or ltc)
+    _7d_history_in_ltc = None # ltc/asset market (or ltc/xlt for xlt or ltc)
+    if asset not in [config.LTC, config.XLT]:
+        for a in [config.XLT, config.LTC]:
             _7d_history = mongo_db.trades.aggregate([
                 {"$match": {
                     "base_asset": a,
@@ -344,12 +344,12 @@ def compile_7d_market_info(asset):
                 }},
             ])
             _7d_history = [] if not _7d_history['ok'] else _7d_history['result']
-            if a == config.DLA: _7d_history_in_dla = _7d_history
+            if a == config.XLT: _7d_history_in_xlt = _7d_history
             else: _7d_history_in_ltc = _7d_history
-    else: #get the DLA/LTC market and invert for LTC/DLA (_7d_history_in_ltc)
+    else: #get the XLT/LTC market and invert for LTC/XLT (_7d_history_in_ltc)
         _7d_history = mongo_db.trades.aggregate([
             {"$match": {
-                "base_asset": config.DLA,
+                "base_asset": config.XLT,
                 "quote_asset": config.LTC,
                 "block_time": {"$gte": start_dt_7d }
             }},
@@ -369,24 +369,24 @@ def compile_7d_market_info(asset):
             }},
         ])
         _7d_history = [] if not _7d_history['ok'] else _7d_history['result']
-        _7d_history_in_dla = _7d_history
-        _7d_history_in_ltc = copy.deepcopy(_7d_history_in_dla)
+        _7d_history_in_xlt = _7d_history
+        _7d_history_in_ltc = copy.deepcopy(_7d_history_in_xlt)
         for i in xrange(len(_7d_history_in_ltc)):
             _7d_history_in_ltc[i]['price'] = calc_inverse(_7d_history_in_ltc[i]['price'])
             _7d_history_in_ltc[i]['vol'] = calc_inverse(_7d_history_in_ltc[i]['vol'])
     
-    for l in [_7d_history_in_dla, _7d_history_in_ltc]:
+    for l in [_7d_history_in_xlt, _7d_history_in_ltc]:
         for e in l: #convert our _id field out to be an epoch ts (in ms), and delete _id
             e['when'] = time.mktime(datetime.datetime(e['_id']['year'], e['_id']['month'], e['_id']['day'], e['_id']['hour']).timetuple()) * 1000 
             del e['_id']
 
     return {
-        '7d_history_in_{}'.format(config.DLA.lower()): [[e['when'], e['price']] for e in _7d_history_in_dla],
+        '7d_history_in_{}'.format(config.XLT.lower()): [[e['when'], e['price']] for e in _7d_history_in_xlt],
         '7d_history_in_{}'.format(config.LTC.lower()): [[e['when'], e['price']] for e in _7d_history_in_ltc],
     }
 
 def compile_asset_pair_market_info():
-    """Compiles the pair-level statistics that show on the View Prices page of czarcraftwallet, for instance"""
+    """Compiles the pair-level statistics that show on the View Prices page of litetokenswallet, for instance"""
     #loop through all open orders, and compile a listing of pairs, with a count of open orders for each pair
     mongo_db = config.mongo_db
     end_dt = datetime.datetime.utcnow()
@@ -433,7 +433,7 @@ def compile_asset_pair_market_info():
             if pair_data[pair]['highest_bid'] is None or order_price > pair_data[pair]['highest_bid']:
                 pair_data[pair]['highest_bid'] = order_price
     
-    #COMPOSE volume data (in DLA and LTC), and % change data
+    #COMPOSE volume data (in XLT and LTC), and % change data
     #loop through all trade volume over the past 24h, and match that to the open orders
     trades_data_by_pair = mongo_db.trades.aggregate([
         {"$match": {
@@ -461,36 +461,36 @@ def compile_asset_pair_market_info():
         pair_data[pair]['vol_base'] = e['vol_base'] 
         pair_data[pair]['vol_quote'] = e['vol_quote'] 
     
-    #compose price data, relative to LTC and DLA
-    mps_dla_ltc, dla_ltc_price, ltc_dla_price = get_price_primatives()
+    #compose price data, relative to LTC and XLT
+    mps_xlt_ltc, xlt_ltc_price, ltc_xlt_price = get_price_primatives()
     for pair, e in pair_data.iteritems():
         base_asset, quote_asset = pair.split('/')
         _24h_vol_in_ltc = None
-        _24h_vol_in_dla = None
-        #derive asset price data, expressed in LTC and DLA, for the given volumes
-        if base_asset == config.DLA:
-            _24h_vol_in_dla = e['vol_base']
-            _24h_vol_in_ltc = util_litecoin.round_out(e['vol_base'] * dla_ltc_price) if dla_ltc_price else 0
+        _24h_vol_in_xlt = None
+        #derive asset price data, expressed in LTC and XLT, for the given volumes
+        if base_asset == config.XLT:
+            _24h_vol_in_xlt = e['vol_base']
+            _24h_vol_in_ltc = util_litecoin.round_out(e['vol_base'] * xlt_ltc_price) if xlt_ltc_price else 0
         elif base_asset == config.LTC:
-            _24h_vol_in_dla = util_litecoin.round_out(e['vol_base'] * ltc_dla_price) if ltc_dla_price else 0
+            _24h_vol_in_xlt = util_litecoin.round_out(e['vol_base'] * ltc_xlt_price) if ltc_xlt_price else 0
             _24h_vol_in_ltc = e['vol_base']
-        else: #base is not DLA or LTC
-            price_summary_in_dla, price_summary_in_ltc, price_in_dla, price_in_ltc, aggregated_price_in_dla, aggregated_price_in_ltc = \
-                get_dla_ltc_price_info(base_asset, mps_dla_ltc, dla_ltc_price, ltc_dla_price, with_last_trades=0, start_dt=start_dt, end_dt=end_dt)
-            if price_in_dla:
-                _24h_vol_in_dla = util_litecoin.round_out(e['vol_base'] * price_in_dla)
+        else: #base is not XLT or LTC
+            price_summary_in_xlt, price_summary_in_ltc, price_in_xlt, price_in_ltc, aggregated_price_in_xlt, aggregated_price_in_ltc = \
+                get_xlt_ltc_price_info(base_asset, mps_xlt_ltc, xlt_ltc_price, ltc_xlt_price, with_last_trades=0, start_dt=start_dt, end_dt=end_dt)
+            if price_in_xlt:
+                _24h_vol_in_xlt = util_litecoin.round_out(e['vol_base'] * price_in_xlt)
             if price_in_ltc:
                 _24h_vol_in_ltc = util_litecoin.round_out(e['vol_base'] * price_in_ltc)
             
-            if _24h_vol_in_dla is None or _24h_vol_in_ltc is None:
-                #the base asset didn't have price data against LTC or DLA, or both...try against the quote asset instead
-                price_summary_in_dla, price_summary_in_ltc, price_in_dla, price_in_ltc, aggregated_price_in_dla, aggregated_price_in_ltc = \
-                    get_dla_ltc_price_info(quote_asset, mps_dla_ltc, dla_ltc_price, ltc_dla_price, with_last_trades=0, start_dt=start_dt, end_dt=end_dt)
-                if _24h_vol_in_dla is None and price_in_dla:
-                    _24h_vol_in_dla = util_litecoin.round_out(e['vol_quote'] * price_in_dla)
+            if _24h_vol_in_xlt is None or _24h_vol_in_ltc is None:
+                #the base asset didn't have price data against LTC or XLT, or both...try against the quote asset instead
+                price_summary_in_xlt, price_summary_in_ltc, price_in_xlt, price_in_ltc, aggregated_price_in_xlt, aggregated_price_in_ltc = \
+                    get_xlt_ltc_price_info(quote_asset, mps_xlt_ltc, xlt_ltc_price, ltc_xlt_price, with_last_trades=0, start_dt=start_dt, end_dt=end_dt)
+                if _24h_vol_in_xlt is None and price_in_xlt:
+                    _24h_vol_in_xlt = util_litecoin.round_out(e['vol_quote'] * price_in_xlt)
                 if _24h_vol_in_ltc is None and price_in_ltc:
                     _24h_vol_in_ltc = util_litecoin.round_out(e['vol_quote'] * price_in_ltc)
-            pair_data[pair]['24h_vol_in_{}'.format(config.DLA.lower())] = _24h_vol_in_dla #might still be None
+            pair_data[pair]['24h_vol_in_{}'.format(config.XLT.lower())] = _24h_vol_in_xlt #might still be None
             pair_data[pair]['24h_vol_in_{}'.format(config.LTC.lower())] = _24h_vol_in_ltc #might still be None
         
         #get % change stats -- start by getting the first trade directly before the 24h period starts
@@ -536,11 +536,11 @@ def compile_asset_market_info():
         #all caught up -- call again in 10 minutes
         return True
 
-    mps_dla_ltc, dla_ltc_price, ltc_dla_price = get_price_primatives()
-    all_traded_assets = list(set(list([config.LTC, config.DLA]) + list(mongo_db.trades.find({}, {'quote_asset': 1, '_id': 0}).distinct('quote_asset'))))
+    mps_xlt_ltc, xlt_ltc_price, ltc_xlt_price = get_price_primatives()
+    all_traded_assets = list(set(list([config.LTC, config.XLT]) + list(mongo_db.trades.find({}, {'quote_asset': 1, '_id': 0}).distinct('quote_asset'))))
     
     #######################
-    #get a list of all assets with a trade within the last 24h (not necessarily just against DLA and LTC)
+    #get a list of all assets with a trade within the last 24h (not necessarily just against XLT and LTC)
     # ^ this is important because compiled market info has a 24h vol parameter that designates total volume for the asset across ALL pairings
     start_dt_1d = datetime.datetime.utcnow() - datetime.timedelta(days=1)
     
@@ -555,18 +555,18 @@ def compile_asset_market_info():
     non_traded_assets = list(set(all_traded_assets) - set(assets))
     mongo_db.asset_market_info.update( {'asset': {'$in': non_traded_assets}}, {"$set": {
             '24h_summary': {'vol': 0, 'count': 0},
-            '24h_ohlc_in_{}'.format(config.DLA.lower()): {},
+            '24h_ohlc_in_{}'.format(config.XLT.lower()): {},
             '24h_ohlc_in_{}'.format(config.LTC.lower()): {},
-            '24h_vol_price_change_in_{}'.format(config.DLA.lower()): None,
+            '24h_vol_price_change_in_{}'.format(config.XLT.lower()): None,
             '24h_vol_price_change_in_{}'.format(config.LTC.lower()): None,
     }}, multi=True)
     logging.info("Block: %s -- Calculated 24h stats for: %s" % (current_block_index, ', '.join(assets)))
     
     #######################
-    #get a list of all assets with a trade within the last 7d up against DLA and LTC
+    #get a list of all assets with a trade within the last 7d up against XLT and LTC
     start_dt_7d = datetime.datetime.utcnow() - datetime.timedelta(days=7)
     assets = list(set(
-          list(mongo_db.trades.find({'block_time': {'$gte': start_dt_7d}, 'base_asset': {'$in': [config.DLA, config.LTC]}}).distinct('quote_asset'))
+          list(mongo_db.trades.find({'block_time': {'$gte': start_dt_7d}, 'base_asset': {'$in': [config.XLT, config.LTC]}}).distinct('quote_asset'))
         + list(mongo_db.trades.find({'block_time': {'$gte': start_dt_7d}}).distinct('base_asset'))
     ))
     for asset in assets:
@@ -574,22 +574,22 @@ def compile_asset_market_info():
         mongo_db.asset_market_info.update({'asset': asset}, {"$set": market_info_7d})
     non_traded_assets = list(set(all_traded_assets) - set(assets))
     mongo_db.asset_market_info.update( {'asset': {'$in': non_traded_assets}}, {"$set": {
-            '7d_history_in_{}'.format(config.DLA.lower()): [],
+            '7d_history_in_{}'.format(config.XLT.lower()): [],
             '7d_history_in_{}'.format(config.LTC.lower()): [],
     }}, multi=True)
     logging.info("Block: %s -- Calculated 7d stats for: %s" % (current_block_index, ', '.join(assets)))
 
     #######################
     #update summary market data for assets traded since last_block_assets_compiled
-    #get assets that were traded since the last check with either LTC or DLA, and update their market summary data
+    #get assets that were traded since the last check with either LTC or XLT, and update their market summary data
     assets = list(set(
-          list(mongo_db.trades.find({'block_index': {'$gt': last_block_assets_compiled}, 'base_asset': {'$in': [config.DLA, config.LTC]}}).distinct('quote_asset'))
+          list(mongo_db.trades.find({'block_index': {'$gt': last_block_assets_compiled}, 'base_asset': {'$in': [config.XLT, config.LTC]}}).distinct('quote_asset'))
         + list(mongo_db.trades.find({'block_index': {'$gt': last_block_assets_compiled}}).distinct('base_asset'))
     ))
     #update our storage of the latest market info in mongo
     for asset in assets:
         logging.info("Block: %s -- Updating asset market info for %s ..." % (current_block_index, asset))
-        summary_info = compile_summary_market_info(asset, mps_dla_ltc, dla_ltc_price, ltc_dla_price)
+        summary_info = compile_summary_market_info(asset, mps_xlt_ltc, xlt_ltc_price, ltc_xlt_price)
         mongo_db.asset_market_info.update( {'asset': asset}, {"$set": summary_info}, upsert=True)
 
     
@@ -617,7 +617,7 @@ def compile_asset_market_info():
         # we'd rather process a later trade for a given asset, as the market price for that will take into account
         # the earlier trades on that same block for that asset, and we don't want/need multiple cap points per block
         assets_in_block = {}
-        mps_dla_ltc, dla_ltc_price, ltc_dla_price = get_price_primatives(end_dt=t_block['block_time'])
+        mps_xlt_ltc, xlt_ltc_price, ltc_xlt_price = get_price_primatives(end_dt=t_block['block_time'])
         for t in reversed(t_block['trades']):
             assets = []
             if t['base_asset'] not in assets_in_block:
@@ -631,14 +631,14 @@ def compile_asset_market_info():
             for asset in assets:
                 #recalculate the market cap for the asset this trade is for
                 asset_info = get_asset_info(asset, at_dt=t['block_time'])
-                (price_summary_in_dla, price_summary_in_ltc, price_in_dla, price_in_ltc, aggregated_price_in_dla, aggregated_price_in_ltc
-                ) = get_dla_ltc_price_info(asset, mps_dla_ltc, dla_ltc_price, ltc_dla_price, with_last_trades=0, end_dt=t['block_time'])
-                market_cap_in_dla, market_cap_in_ltc = calc_market_cap(asset_info, price_in_dla, price_in_ltc)
+                (price_summary_in_xlt, price_summary_in_ltc, price_in_xlt, price_in_ltc, aggregated_price_in_xlt, aggregated_price_in_ltc
+                ) = get_xlt_ltc_price_info(asset, mps_xlt_ltc, xlt_ltc_price, ltc_xlt_price, with_last_trades=0, end_dt=t['block_time'])
+                market_cap_in_xlt, market_cap_in_ltc = calc_market_cap(asset_info, price_in_xlt, price_in_ltc)
                 #^ this will get price data from the block time of this trade back the standard number of days and trades
                 # to determine our standard market price, relative (anchored) to the time of this trade
         
-                for market_cap_as in (config.DLA, config.LTC):
-                    market_cap = market_cap_in_dla if market_cap_as == config.DLA else market_cap_in_ltc
+                for market_cap_as in (config.XLT, config.LTC):
+                    market_cap = market_cap_in_xlt if market_cap_as == config.XLT else market_cap_in_ltc
                     #if there is a previously stored market cap for this asset, add a new history point only if the two caps differ
                     prev_market_cap_history = mongo_db.asset_marketcap_history.find({'market_cap_as': market_cap_as, 'asset': asset,
                         'block_index': {'$lt': t['block_index']}}).sort('block_index', pymongo.DESCENDING).limit(1)

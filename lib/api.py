@@ -36,7 +36,7 @@ D = decimal.Decimal
 def serve_api(mongo_db, redis_client):
     # Preferneces are just JSON objects... since we don't force a specific form to the wallet on
     # the server side, this makes it easier for 3rd party wallets (i.e. not Craftwallet) to fully be able to
-    # use craftblockd to not only pull useful data, but also load and store their own preferences, containing
+    # use liteblockd to not only pull useful data, but also load and store their own preferences, containing
     # whatever data they need
     
     DEFAULT_COUNTERPARTYD_API_CACHE_PERIOD = 60 #in seconds
@@ -134,7 +134,7 @@ def serve_api(mongo_db, redis_client):
     @dispatcher.add_method
     def get_normalized_balances(addresses):
         """
-        This call augments czarcraftd's get_balances with a normalized_quantity field. It also will include any owned
+        This call augments litetokensd's get_balances with a normalized_quantity field. It also will include any owned
         assets for an address, even if their balance is zero. 
         NOTE: Does not retrieve LTC balance. Use get_address_info for that.
         """
@@ -384,7 +384,7 @@ def serve_api(mongo_db, redis_client):
             start_dt=datetime.datetime.utcfromtimestamp(start_ts),
             end_dt=datetime.datetime.utcfromtimestamp(end_ts) if now_ts != end_ts else None)
         
-        #make API call to czarcraftd to get all of the data for the specified address
+        #make API call to litetokensd to get all of the data for the specified address
         txns = []
         d = _get_address_history(address, start_block=start_block_index, end_block=end_block_index)
         #mash it all together
@@ -438,7 +438,7 @@ def serve_api(mongo_db, redis_client):
         data = {}
         results = {}
         #^ format is result[market_cap_as][asset] = [[block_time, market_cap], [block_time2, market_cap2], ...] 
-        for market_cap_as in (config.DLA, config.LTC):
+        for market_cap_as in (config.XLT, config.LTC):
             caps = mongo_db.asset_marketcap_history.aggregate([
                 {"$match": {
                     "market_cap_as": market_cap_as,
@@ -497,23 +497,23 @@ def serve_api(mongo_db, redis_client):
 
     @dispatcher.add_method
     def get_market_info_leaderboard(limit=100):
-        """returns market leaderboard data for both the DLA and LTC markets"""
+        """returns market leaderboard data for both the XLT and LTC markets"""
         #do two queries because we limit by our sorted results, and we might miss an asset with a high LTC trading value
-        # but with little or no DLA trading activity, for instance if we just did one query
-        assets_market_info_dla = list(mongo_db.asset_market_info.find({}, {'_id': 0}).sort('market_cap_in_{}'.format(config.DLA.lower()), pymongo.DESCENDING).limit(limit))
+        # but with little or no XLT trading activity, for instance if we just did one query
+        assets_market_info_xlt = list(mongo_db.asset_market_info.find({}, {'_id': 0}).sort('market_cap_in_{}'.format(config.XLT.lower()), pymongo.DESCENDING).limit(limit))
         assets_market_info_ltc = list(mongo_db.asset_market_info.find({}, {'_id': 0}).sort('market_cap_in_{}'.format(config.LTC.lower()), pymongo.DESCENDING).limit(limit))
         assets_market_info = {
-            config.DLA.lower(): [a for a in assets_market_info_dla if a['price_in_{}'.format(config.DLA.lower())]],
+            config.XLT.lower(): [a for a in assets_market_info_xlt if a['price_in_{}'.format(config.XLT.lower())]],
             config.LTC.lower(): [a for a in assets_market_info_ltc if a['price_in_{}'.format(config.LTC.lower())]]
         }
         #throw on extended info, if it exists for a given asset
-        assets = list(set([a['asset'] for a in assets_market_info[config.DLA.lower()]] + [a['asset'] for a in assets_market_info[config.LTC.lower()]]))
+        assets = list(set([a['asset'] for a in assets_market_info[config.XLT.lower()]] + [a['asset'] for a in assets_market_info[config.LTC.lower()]]))
         extended_asset_info = mongo_db.asset_extended_info.find({'asset': {'$in': assets}})
         extended_asset_info_dict = {}
         for e in extended_asset_info:
             if not e.get('disabled', False): #skip assets marked disabled
                 extended_asset_info_dict[e['asset']] = e
-        for r in (assets_market_info[config.DLA.lower()], assets_market_info[config.LTC.lower()]):
+        for r in (assets_market_info[config.XLT.lower()], assets_market_info[config.LTC.lower()]):
             for a in r:
                 if a['asset'] in extended_asset_info_dict:
                     extended_info = extended_asset_info_dict[a['asset']]
@@ -841,7 +841,7 @@ def serve_api(mongo_db, redis_client):
                 bid_book_max_pct_fee_required = pct_fee_provided
                 ask_book_min_pct_fee_provided = pct_fee_provided #my competition at the given fee provided
         elif quote_asset == config.LTC:
-            assert base_asset == config.DLA #only time when this is the case
+            assert base_asset == config.XLT #only time when this is the case
             if buy_asset == config.LTC:
                 #if LTC is quote asset and we're buying it, we're selling the BASE. we require a LTC fee (we're on the ask (top) book and we want a higher price)
                 # - show BASE buyers (bid book) that provide a LTC fee >= what we require 
@@ -1339,7 +1339,7 @@ def serve_api(mongo_db, redis_client):
         return True
     
     @dispatcher.add_method
-    def proxy_to_czarcraftd(method='', params=[]):
+    def proxy_to_litetokensd(method='', params=[]):
         if method=='sql': raise Exception("Invalid method") 
         result = None
         cache_key = None
@@ -1407,7 +1407,7 @@ def serve_api(mongo_db, redis_client):
 
     @dispatcher.add_method
     def get_users_pairs(addresses=[], max_pairs=12):
-        return dex.get_users_pairs(addresses, max_pairs, quote_assets=['DLA', 'XLTC'])
+        return dex.get_users_pairs(addresses, max_pairs, quote_assets=['XLT', 'XLTC'])
 
     @dispatcher.add_method
     def get_market_orders(asset1, asset2, addresses=[], min_fee_provided=0.95, max_fee_required=0.95):
@@ -1540,7 +1540,7 @@ def serve_api(mongo_db, redis_client):
             tx_logger.info("***CSP SECURITY --- %s" % data_json)
             return flask.Response('', 200)
         
-        #"ping" czarcraftd to test
+        #"ping" litetokensd to test
         cpd_s = time.time()
         cpd_result_valid = True
         try:
@@ -1549,7 +1549,7 @@ def serve_api(mongo_db, redis_client):
             cpd_result_valid = False
         cpd_e = time.time()
 
-        #"ping" craftblockd to test, as well
+        #"ping" liteblockd to test, as well
         cbd_s = time.time()
         cbd_result_valid = True
         cbd_result_error_code = None
@@ -1583,16 +1583,16 @@ def serve_api(mongo_db, redis_client):
             response_code = 500
         
         result = {
-            'czarcraftd': 'OK' if cpd_result_valid else 'NOT OK',
-            'craftblockd': 'OK' if cbd_result_valid else 'NOT OK',
-            'craftblockd_error': cbd_result_error_code,
-            'czarcraftd_ver': '%s.%s.%s' % (
+            'litetokensd': 'OK' if cpd_result_valid else 'NOT OK',
+            'liteblockd': 'OK' if cbd_result_valid else 'NOT OK',
+            'liteblockd_error': cbd_result_error_code,
+            'litetokensd_ver': '%s.%s.%s' % (
                 cpd_status['version_major'], cpd_status['version_minor'], cpd_status['version_revision']) if cpd_result_valid else '?',
-            'craftblockd_ver': config.VERSION,
-            'czarcraftd_last_block': cpd_status['last_block'] if cpd_result_valid else '?',
-            'czarcraftd_last_message_index': cpd_status['last_message_index'] if cpd_result_valid else '?',
-            'czarcraftd_check_elapsed': cpd_e - cpd_s,
-            'craftblockd_check_elapsed': cbd_e - cbd_s,
+            'liteblockd_ver': config.VERSION,
+            'litetokensd_last_block': cpd_status['last_block'] if cpd_result_valid else '?',
+            'litetokensd_last_message_index': cpd_status['last_message_index'] if cpd_result_valid else '?',
+            'litetokensd_check_elapsed': cpd_e - cpd_s,
+            'liteblockd_check_elapsed': cbd_e - cbd_s,
             'local_online_users': len(siofeeds.onlineClients),
         }
         return flask.Response(json.dumps(result), response_code, mimetype='application/json')

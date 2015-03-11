@@ -1,6 +1,6 @@
 #! /usr/bin/env python3
 """
-craftblockd server
+liteblockd server
 """
 
 #import before importing other modules
@@ -33,11 +33,11 @@ from lib import (config, api, events, blockfeed, siofeeds, util)
 
 if __name__ == '__main__':
     # Parse command-line arguments.
-    parser = argparse.ArgumentParser(prog='craftblockd', description='Craftwallet daemon. Works with czarcraftd')
-    parser.add_argument('-V', '--version', action='version', version="craftblockd v%s" % config.VERSION)
+    parser = argparse.ArgumentParser(prog='liteblockd', description='Craftwallet daemon. Works with litetokensd')
+    parser.add_argument('-V', '--version', action='version', version="liteblockd v%s" % config.VERSION)
     parser.add_argument('-v', '--verbose', dest='verbose', action='store_true', default=False, help='sets log level to DEBUG instead of WARNING')
 
-    parser.add_argument('--reparse', action='store_true', default=False, help='force full re-initialization of the craftblockd database')
+    parser.add_argument('--reparse', action='store_true', default=False, help='force full re-initialization of the liteblockd database')
     parser.add_argument('--testnet', action='store_true', default=False, help='use Litecoin testnet addresses and block numbers')
     parser.add_argument('--data-dir', help='specify to explicitly override the directory in which to keep the config file and log file')
     parser.add_argument('--config-file', help='the location of the configuration file')
@@ -46,10 +46,10 @@ if __name__ == '__main__':
     parser.add_argument('--pid-file', help='the location of the pid file')
 
     #THINGS WE CONNECT TO
-    parser.add_argument('--czarcraftd-rpc-connect', help='the hostname of the czarcraftd JSON-RPC server')
-    parser.add_argument('--czarcraftd-rpc-port', type=int, help='the port used to communicate with czarcraftd over JSON-RPC')
-    parser.add_argument('--czarcraftd-rpc-user', help='the username used to communicate with czarcraftd over JSON-RPC')
-    parser.add_argument('--czarcraftd-rpc-password', help='the password used to communicate with czarcraftd over JSON-RPC')
+    parser.add_argument('--litetokensd-rpc-connect', help='the hostname of the litetokensd JSON-RPC server')
+    parser.add_argument('--litetokensd-rpc-port', type=int, help='the port used to communicate with litetokensd over JSON-RPC')
+    parser.add_argument('--litetokensd-rpc-user', help='the username used to communicate with litetokensd over JSON-RPC')
+    parser.add_argument('--litetokensd-rpc-password', help='the password used to communicate with litetokensd over JSON-RPC')
 
     parser.add_argument('--blockchain-service-name', help='the blockchain service name to connect to')
     parser.add_argument('--blockchain-service-connect', help='the blockchain service server URL base to connect to, if not default')
@@ -72,12 +72,12 @@ if __name__ == '__main__':
 
     #THINGS WE HOST
     parser.add_argument('--rpc-host', help='the IP of the interface to bind to for providing JSON-RPC API access (0.0.0.0 for all interfaces)')
-    parser.add_argument('--rpc-port', type=int, help='port on which to provide the craftblockd JSON-RPC API')
+    parser.add_argument('--rpc-port', type=int, help='port on which to provide the liteblockd JSON-RPC API')
     parser.add_argument('--rpc-allow-cors', action='store_true', default=True, help='Allow ajax cross domain request')
-    parser.add_argument('--socketio-host', help='the interface on which to host the craftblockd socket.io API')
-    parser.add_argument('--socketio-port', type=int, help='port on which to provide the craftblockd socket.io API')
-    parser.add_argument('--socketio-chat-host', help='the interface on which to host the craftblockd socket.io chat API')
-    parser.add_argument('--socketio-chat-port', type=int, help='port on which to provide the craftblockd socket.io chat API')
+    parser.add_argument('--socketio-host', help='the interface on which to host the liteblockd socket.io API')
+    parser.add_argument('--socketio-port', type=int, help='port on which to provide the liteblockd socket.io API')
+    parser.add_argument('--socketio-chat-host', help='the interface on which to host the liteblockd socket.io chat API')
+    parser.add_argument('--socketio-chat-port', type=int, help='port on which to provide the liteblockd socket.io chat API')
 
     parser.add_argument('--rollbar-token', help='the API token to use with rollbar (leave blank to disable rollbar integration)')
     parser.add_argument('--rollbar-env', help='the environment name for the rollbar integration (if enabled). Defaults to \'production\'')
@@ -89,14 +89,14 @@ if __name__ == '__main__':
 
     # Data directory
     if not args.data_dir:
-        config.DATA_DIR = appdirs.user_data_dir(appauthor='Czarcraft', appname='craftblockd', roaming=True)
+        config.DATA_DIR = appdirs.user_data_dir(appauthor='Litetokens', appname='liteblockd', roaming=True)
     else:
         config.DATA_DIR = args.data_dir
     if not os.path.isdir(config.DATA_DIR): os.mkdir(config.DATA_DIR)
 
     #Read config file
     configfile = ConfigParser.ConfigParser()
-    config_path = os.path.join(config.DATA_DIR, 'craftblockd.conf')
+    config_path = os.path.join(config.DATA_DIR, 'liteblockd.conf')
     configfile.read(config_path)
     has_config = configfile.has_section('Default')
 
@@ -114,19 +114,19 @@ if __name__ == '__main__':
     ##############
     # THINGS WE CONNECT TO
 
-    # czarcraftd RPC host
-    if args.czarcraftd_rpc_connect:
-        config.CZARCRAFTD_RPC_CONNECT = args.czarcraftd_rpc_connect
-    elif has_config and configfile.has_option('Default', 'czarcraftd-rpc-connect') and configfile.get('Default', 'czarcraftd-rpc-connect'):
-        config.CZARCRAFTD_RPC_CONNECT = configfile.get('Default', 'czarcraftd-rpc-connect')
+    # litetokensd RPC host
+    if args.litetokensd_rpc_connect:
+        config.CZARCRAFTD_RPC_CONNECT = args.litetokensd_rpc_connect
+    elif has_config and configfile.has_option('Default', 'litetokensd-rpc-connect') and configfile.get('Default', 'litetokensd-rpc-connect'):
+        config.CZARCRAFTD_RPC_CONNECT = configfile.get('Default', 'litetokensd-rpc-connect')
     else:
         config.CZARCRAFTD_RPC_CONNECT = 'localhost'
 
-    # czarcraftd RPC port
-    if args.czarcraftd_rpc_port:
-        config.CZARCRAFTD_RPC_PORT = args.czarcraftd_rpc_port
-    elif has_config and configfile.has_option('Default', 'czarcraftd-rpc-port') and configfile.get('Default', 'czarcraftd-rpc-port'):
-        config.CZARCRAFTD_RPC_PORT = configfile.get('Default', 'czarcraftd-rpc-port')
+    # litetokensd RPC port
+    if args.litetokensd_rpc_port:
+        config.CZARCRAFTD_RPC_PORT = args.litetokensd_rpc_port
+    elif has_config and configfile.has_option('Default', 'litetokensd-rpc-port') and configfile.get('Default', 'litetokensd-rpc-port'):
+        config.CZARCRAFTD_RPC_PORT = configfile.get('Default', 'litetokensd-rpc-port')
     else:
         if config.TESTNET:
             config.CZARCRAFTD_RPC_PORT = 17730
@@ -136,21 +136,21 @@ if __name__ == '__main__':
         config.CZARCRAFTD_RPC_PORT = int(config.CZARCRAFTD_RPC_PORT)
         assert int(config.CZARCRAFTD_RPC_PORT) > 1 and int(config.CZARCRAFTD_RPC_PORT) < 65535
     except:
-        raise Exception("Please specific a valid port number czarcraftd-rpc-port configuration parameter")
+        raise Exception("Please specific a valid port number litetokensd-rpc-port configuration parameter")
             
-    # czarcraftd RPC user
-    if args.czarcraftd_rpc_user:
-        config.CZARCRAFTD_RPC_USER = args.czarcraftd_rpc_user
-    elif has_config and configfile.has_option('Default', 'czarcraftd-rpc-user') and configfile.get('Default', 'czarcraftd-rpc-user'):
-        config.CZARCRAFTD_RPC_USER = configfile.get('Default', 'czarcraftd-rpc-user')
+    # litetokensd RPC user
+    if args.litetokensd_rpc_user:
+        config.CZARCRAFTD_RPC_USER = args.litetokensd_rpc_user
+    elif has_config and configfile.has_option('Default', 'litetokensd-rpc-user') and configfile.get('Default', 'litetokensd-rpc-user'):
+        config.CZARCRAFTD_RPC_USER = configfile.get('Default', 'litetokensd-rpc-user')
     else:
         config.CZARCRAFTD_RPC_USER = 'rpcuser'
 
-    # czarcraftd RPC password
-    if args.czarcraftd_rpc_password:
-        config.CZARCRAFTD_RPC_PASSWORD = args.czarcraftd_rpc_password
-    elif has_config and configfile.has_option('Default', 'czarcraftd-rpc-password') and configfile.get('Default', 'czarcraftd-rpc-password'):
-        config.CZARCRAFTD_RPC_PASSWORD = configfile.get('Default', 'czarcraftd-rpc-password')
+    # litetokensd RPC password
+    if args.litetokensd_rpc_password:
+        config.CZARCRAFTD_RPC_PASSWORD = args.litetokensd_rpc_password
+    elif has_config and configfile.has_option('Default', 'litetokensd-rpc-password') and configfile.get('Default', 'litetokensd-rpc-password'):
+        config.CZARCRAFTD_RPC_PASSWORD = configfile.get('Default', 'litetokensd-rpc-password')
     else:
         config.CZARCRAFTD_RPC_PASSWORD = 'rpcpassword'
 
@@ -202,9 +202,9 @@ if __name__ == '__main__':
         config.MONGODB_DATABASE = configfile.get('Default', 'mongodb-database')
     else:
         if config.TESTNET:
-            config.MONGODB_DATABASE = 'craftblockd_testnet'
+            config.MONGODB_DATABASE = 'liteblockd_testnet'
         else:
-            config.MONGODB_DATABASE = 'craftblockd'
+            config.MONGODB_DATABASE = 'liteblockd'
 
     # mongodb user
     if args.mongodb_user:
@@ -381,14 +381,14 @@ if __name__ == '__main__':
     elif has_config and configfile.has_option('Default', 'log-file'):
         config.LOG = configfile.get('Default', 'log-file')
     else:
-        config.LOG = os.path.join(config.DATA_DIR, 'craftblockd.log')
+        config.LOG = os.path.join(config.DATA_DIR, 'liteblockd.log')
         
     if args.tx_log_file:
         config.TX_LOG = args.tx_log_file
     elif has_config and configfile.has_option('Default', 'tx-log-file'):
         config.TX_LOG = configfile.get('Default', 'tx-log-file')
     else:
-        config.TX_LOG = os.path.join(config.DATA_DIR, 'craftblockd-tx.log')
+        config.TX_LOG = os.path.join(config.DATA_DIR, 'liteblockd-tx.log')
     
 
     # PID
@@ -397,7 +397,7 @@ if __name__ == '__main__':
     elif has_config and configfile.has_option('Default', 'pid-file'):
         config.PID = configfile.get('Default', 'pid-file')
     else:
-        config.PID = os.path.join(config.DATA_DIR, 'craftblockd.pid')
+        config.PID = os.path.join(config.DATA_DIR, 'liteblockd.pid')
 
      # ROLLBAR INTEGRATION
     if args.rollbar_token:
@@ -412,7 +412,7 @@ if __name__ == '__main__':
     elif has_config and configfile.has_option('Default', 'rollbar-env'):
         config.ROLLBAR_ENV = configfile.get('Default', 'rollbar-env')
     else:
-        config.ROLLBAR_ENV = 'craftblockd-production'
+        config.ROLLBAR_ENV = 'liteblockd-production'
         
     #support email
     if args.support_email:
@@ -490,20 +490,20 @@ if __name__ == '__main__':
     
     logging.info("blueblock Version %s starting ..." % config.VERSION)
     
-    #Load in czarcraftwallet config settings
+    #Load in litetokenswallet config settings
     #TODO: Hardcode in cw path for now. Will be taken out to a plugin shortly...
-    czarcraftwallet_config_path = os.path.join('/home/ceo/craftwallet/livenet/craftwallet.conf.json')
-    if os.path.exists(czarcraftwallet_config_path):
-        logging.info("Loading czarcraftwallet config at '%s'" % czarcraftwallet_config_path)
-        with open(czarcraftwallet_config_path) as f:
+    litetokenswallet_config_path = os.path.join('/home/ceo/craftwallet/livenet/craftwallet.conf.json')
+    if os.path.exists(litetokenswallet_config_path):
+        logging.info("Loading litetokenswallet config at '%s'" % litetokenswallet_config_path)
+        with open(litetokenswallet_config_path) as f:
             config.CRAFTWALLET_CONFIG_JSON = f.read()
     else:
-        logging.warn("Craftwallet config does not exist at '%s'" % czarcraftwallet_config_path)
+        logging.warn("Craftwallet config does not exist at '%s'" % litetokenswallet_config_path)
         config.CRAFTWALLET_CONFIG_JSON = '{}'
     try:
         config.CRAFTWALLET_CONFIG = json.loads(config.CRAFTWALLET_CONFIG_JSON)
     except Exception, e:
-        logging.error("Exception loading czarcraftwallet config: %s" % e)
+        logging.error("Exception loading litetokenswallet config: %s" % e)
     
     #xnova(7/16/2014): Disable for now, as this uses requests under the surface, which may not be safe for a gevent-based app
     #rollbar integration
@@ -651,7 +651,7 @@ if __name__ == '__main__':
         resource="socket.io", policy_server=False)
     sio_server.start() #start the socket.io server greenlets
 
-    logging.info("Starting up czarcraftd block feed poller...")
+    logging.info("Starting up litetokensd block feed poller...")
     gevent.spawn(blockfeed.process_cpd_blockfeed, zmq_publisher_eventfeed)
 
     #start up event timers that don't depend on the feed being fully caught up
@@ -669,7 +669,7 @@ if __name__ == '__main__':
     
     #print some user friendly startup warnings as need be
     if not config.SUPPORT_EMAIL:
-        logging.warn("Support email setting not set: To enable, please specify an email for the 'support-email' setting in your craftblockd.conf")
+        logging.warn("Support email setting not set: To enable, please specify an email for the 'support-email' setting in your liteblockd.conf")
 
 
 # vim: tabstop=8 expandtab shiftwidth=4 softtabstop=4

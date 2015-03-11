@@ -89,7 +89,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Armory offline transaction generator daemon')
     parser.add_argument('--testnet', action='store_true', help='Run for testnet')
     args = parser.parse_args()
-    ltcdir = "/home/dla/.litecoin%s/" % ('-testnet/testnet3' if args.testnet else '')
+    ltcdir = "/home/xlt/.litecoin%s/" % ('-testnet/testnet3' if args.testnet else '')
 
     print("**** Initializing armory ...")
     #require armory to be installed, adding the configured armory path to PYTHONPATH

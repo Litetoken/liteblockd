@@ -1,10 +1,10 @@
-craftblockd
+liteblockd
 ==================================================
 
-``craftblockd`` features a full-fledged JSON RPC-based API, which services Craftwallet, as well as any
+``liteblockd`` features a full-fledged JSON RPC-based API, which services Craftwallet, as well as any
 3rd party services which wish to use it.
 
-``craftblockd`` provides additional services to Craftwallet beyond those offered in the API provided by ``czarcraftd``.
+``liteblockd`` provides additional services to Craftwallet beyond those offered in the API provided by ``litetokensd``.
 
 Such services include:
 

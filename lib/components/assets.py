@@ -229,42 +229,42 @@ def get_escrowed_balances(addresses):
     sql = '''SELECT source AS address, '{}' AS asset, SUM(wager_remaining) AS quantity
              FROM bets
              WHERE source IN ({}) AND status = ?
-             GROUP BY address'''.format(config.DLA, addresses_holder)
+             GROUP BY address'''.format(config.XLT, addresses_holder)
     bindings = addresses + ['open']
     results += util.call_jsonrpc_api("sql", {'query': sql, 'bindings': bindings}, abort_on_error=True)['result']
 
     sql = '''SELECT tx0_address AS address, '{}' AS asset, SUM(forward_quantity) AS quantity
              FROM bet_matches
              WHERE tx0_address IN ({}) AND status = ?
-             GROUP BY address'''.format(config.DLA, addresses_holder)
+             GROUP BY address'''.format(config.XLT, addresses_holder)
     bindings = addresses + ['pending']
     results += util.call_jsonrpc_api("sql", {'query': sql, 'bindings': bindings}, abort_on_error=True)['result']
 
     sql = '''SELECT tx1_address AS address, '{}' AS asset, SUM(backward_quantity) AS quantity
              FROM bet_matches
              WHERE tx1_address IN ({}) AND status = ?
-             GROUP BY address'''.format(config.DLA, addresses_holder)
+             GROUP BY address'''.format(config.XLT, addresses_holder)
     bindings = addresses + ['pending']
     results += util.call_jsonrpc_api("sql", {'query': sql, 'bindings': bindings}, abort_on_error=True)['result']
 
     sql = '''SELECT source AS address, '{}' AS asset, SUM(wager) AS quantity
              FROM rps
              WHERE source IN ({}) AND status = ?
-             GROUP BY address'''.format(config.DLA, addresses_holder)
+             GROUP BY address'''.format(config.XLT, addresses_holder)
     bindings = addresses + ['open']
     results += util.call_jsonrpc_api("sql", {'query': sql, 'bindings': bindings}, abort_on_error=True)['result']
 
     sql = '''SELECT tx0_address AS address, '{}' AS asset, SUM(wager) AS quantity
              FROM rps_matches
              WHERE tx0_address IN ({}) AND status IN (?, ?, ?)
-             GROUP BY address'''.format(config.DLA, addresses_holder)
+             GROUP BY address'''.format(config.XLT, addresses_holder)
     bindings = addresses + ['pending', 'pending and resolved', 'resolved and pending']
     results += util.call_jsonrpc_api("sql", {'query': sql, 'bindings': bindings}, abort_on_error=True)['result']
 
     sql = '''SELECT tx1_address AS address, '{}' AS asset, SUM(wager) AS quantity
              FROM rps_matches
              WHERE tx1_address IN ({}) AND status IN (?, ?, ?)
-             GROUP BY address'''.format(config.DLA, addresses_holder)
+             GROUP BY address'''.format(config.XLT, addresses_holder)
     bindings = addresses + ['pending', 'pending and resolved', 'resolved and pending']
     results += util.call_jsonrpc_api("sql", {'query': sql, 'bindings': bindings}, abort_on_error=True)['result']
 

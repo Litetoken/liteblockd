@@ -1,5 +1,5 @@
 """
-blockfeed: sync with and process new blocks from czarcraftd
+blockfeed: sync with and process new blocks from litetokensd
 """
 import re
 import os
@@ -41,19 +41,19 @@ def process_cpd_blockfeed(zmq_publisher_eventfeed):
         
         #create/update default app_config object
         mongo_db.app_config.update({}, {
-        'db_version': config.DB_VERSION, #craftblockd database version
+        'db_version': config.DB_VERSION, #liteblockd database version
         'running_testnet': config.TESTNET,
-        'czarcraftd_db_version_major': None,
-        'czarcraftd_db_version_minor': None,
-        'czarcraftd_running_testnet': None,
+        'litetokensd_db_version_major': None,
+        'litetokensd_db_version_minor': None,
+        'litetokensd_running_testnet': None,
         'last_block_assets_compiled': config.BLOCK_FIRST, #for asset data compilation in events.py (resets on reparse as well)
         }, upsert=True)
         app_config = mongo_db.app_config.find()[0]
         
         #DO NOT DELETE preferences and chat_handles and chat_history
         
-        #create DLA and LTC assets in tracked_assets
-        for asset in [config.DLA, config.LTC]:
+        #create XLT and LTC assets in tracked_assets
+        for asset in [config.XLT, config.LTC]:
             base_asset = {
                 'asset': asset,
                 'owner': None,
@@ -76,7 +76,7 @@ def process_cpd_blockfeed(zmq_publisher_eventfeed):
            and we should get rid of them
         
         NOTE: after calling this function, you should always trigger a "continue" statement to reiterate the processing loop
-        (which will get a new last_processed_block from czarcraftd and resume as appropriate)   
+        (which will get a new last_processed_block from litetokensd and resume as appropriate)   
         """
         logging.warn("Pruning to block %i ..." % (max_block_index))        
         mongo_db.processed_blocks.remove({"block_index": {"$gt": max_block_index}})
@@ -166,77 +166,77 @@ def process_cpd_blockfeed(zmq_publisher_eventfeed):
         or app_config[0]['db_version'] != config.DB_VERSION
         or app_config[0]['running_testnet'] != config.TESTNET):
         if app_config.count():
-            logging.warn("craftblockd database version UPDATED (from %i to %i) or testnet setting changed (from %s to %s), or REINIT forced (%s). REBUILDING FROM SCRATCH ..." % (
+            logging.warn("liteblockd database version UPDATED (from %i to %i) or testnet setting changed (from %s to %s), or REINIT forced (%s). REBUILDING FROM SCRATCH ..." % (
                 app_config[0]['db_version'], config.DB_VERSION, app_config[0]['running_testnet'], config.TESTNET, config.REPARSE_FORCED))
         else:
-            logging.warn("craftblockd database app_config collection doesn't exist. BUILDING FROM SCRATCH...")
+            logging.warn("liteblockd database app_config collection doesn't exist. BUILDING FROM SCRATCH...")
         app_config = blow_away_db()
         my_latest_block = LATEST_BLOCK_INIT
     else:
         app_config = app_config[0]
         #get the last processed block out of mongo
         my_latest_block = mongo_db.processed_blocks.find_one(sort=[("block_index", pymongo.DESCENDING)]) or LATEST_BLOCK_INIT
-        #remove any data we have for blocks higher than this (would happen if craftblockd or mongo died
+        #remove any data we have for blocks higher than this (would happen if liteblockd or mongo died
         # or errored out while processing a block)
         my_latest_block = prune_my_stale_blocks(my_latest_block['block_index'])
 
-    #start polling czarcraftd for new blocks    
+    #start polling litetokensd for new blocks    
     while True:
         try:
             running_info = util.call_jsonrpc_api("get_running_info", abort_on_error=True)
             if 'result' not in running_info:
-                raise AssertionError("Could not contact czarcraftd")
+                raise AssertionError("Could not contact litetokensd")
             running_info = running_info['result']
         except Exception, e:
             logging.warn(str(e) + " -- Waiting 3 seconds before trying again...")
             time.sleep(3)
             continue
         
-        if running_info['last_message_index'] == -1: #last_message_index not set yet (due to no messages in czarcraftd DB yet)
-            logging.warn("No last_message_index returned. Waiting until czarcraftd has messages...")
+        if running_info['last_message_index'] == -1: #last_message_index not set yet (due to no messages in litetokensd DB yet)
+            logging.warn("No last_message_index returned. Waiting until litetokensd has messages...")
             time.sleep(10)
             continue
         
-        #wipe our state data if necessary, if czarcraftd has moved on to a new DB version
+        #wipe our state data if necessary, if litetokensd has moved on to a new DB version
         wipeState = False
         updatePrefs = False
-        if    app_config['czarcraftd_db_version_major'] is None \
-           or app_config['czarcraftd_db_version_minor'] is None \
-           or app_config['czarcraftd_running_testnet'] is None:
+        if    app_config['litetokensd_db_version_major'] is None \
+           or app_config['litetokensd_db_version_minor'] is None \
+           or app_config['litetokensd_running_testnet'] is None:
             updatePrefs = True
-        elif running_info['version_major'] != app_config['czarcraftd_db_version_major']:
-            logging.warn("czarcraftd MAJOR DB version change (we built from %s, czarcraftd is at %s). Wiping our state data." % (
-                app_config['czarcraftd_db_version_major'], running_info['version_major']))
+        elif running_info['version_major'] != app_config['litetokensd_db_version_major']:
+            logging.warn("litetokensd MAJOR DB version change (we built from %s, litetokensd is at %s). Wiping our state data." % (
+                app_config['litetokensd_db_version_major'], running_info['version_major']))
             wipeState = True
             updatePrefs = True
-        elif running_info['version_minor'] != app_config['czarcraftd_db_version_minor']:
-            logging.warn("czarcraftd MINOR DB version change (we built from %s.%s, czarcraftd is at %s.%s). Wiping our state data." % (
-                app_config['czarcraftd_db_version_major'], app_config['czarcraftd_db_version_minor'],
+        elif running_info['version_minor'] != app_config['litetokensd_db_version_minor']:
+            logging.warn("litetokensd MINOR DB version change (we built from %s.%s, litetokensd is at %s.%s). Wiping our state data." % (
+                app_config['litetokensd_db_version_major'], app_config['litetokensd_db_version_minor'],
                 running_info['version_major'], running_info['version_minor']))
             wipeState = True
             updatePrefs = True
-        elif running_info.get('running_testnet', False) != app_config['czarcraftd_running_testnet']:
-            logging.warn("czarcraftd testnet setting change (from %s to %s). Wiping our state data." % (
-                app_config['czarcraftd_running_testnet'], running_info['running_testnet']))
+        elif running_info.get('running_testnet', False) != app_config['litetokensd_running_testnet']:
+            logging.warn("litetokensd testnet setting change (from %s to %s). Wiping our state data." % (
+                app_config['litetokensd_running_testnet'], running_info['running_testnet']))
             wipeState = True
             updatePrefs = True
         if wipeState:
             app_config = blow_away_db()
         if updatePrefs:
-            app_config['czarcraftd_db_version_major'] = running_info['version_major'] 
-            app_config['czarcraftd_db_version_minor'] = running_info['version_minor']
-            app_config['czarcraftd_running_testnet'] = running_info['running_testnet']
+            app_config['litetokensd_db_version_major'] = running_info['version_major'] 
+            app_config['litetokensd_db_version_minor'] = running_info['version_minor']
+            app_config['litetokensd_running_testnet'] = running_info['running_testnet']
             mongo_db.app_config.update({}, app_config)
             
             #reset my latest block record
             my_latest_block = LATEST_BLOCK_INIT
             config.CAUGHT_UP = False #You've Come a Long Way, Baby
         
-        #work up to what block czarcraftd is at
+        #work up to what block litetokensd is at
         last_processed_block = running_info['last_block']
         
         if last_processed_block['block_index'] is None:
-            logging.warn("czarcraftd has no last processed block (probably is reparsing). Waiting 3 seconds before trying again...")
+            logging.warn("litetokensd has no last processed block (probably is reparsing). Waiting 3 seconds before trying again...")
             time.sleep(3)
             continue
         
@@ -276,7 +276,7 @@ def process_cpd_blockfeed(zmq_publisher_eventfeed):
                         config.LAST_MESSAGE_INDEX + 1, msg['message_index'], msg, [m['message_index'] for m in block_data]))
                     #sys.exit(1) #FOR NOW
                 
-                #BUG: sometimes czarcraftd seems to return OLD messages out of the message feed. deal with those
+                #BUG: sometimes litetokensd seems to return OLD messages out of the message feed. deal with those
                 if msg['message_index'] <= config.LAST_MESSAGE_INDEX:
                     logging.warn("BUG: IGNORED old RAW message %s: %s ..." % (msg['message_index'], msg))
                     continue
@@ -313,7 +313,7 @@ def process_cpd_blockfeed(zmq_publisher_eventfeed):
                     my_latest_block = prune_my_stale_blocks(msg_data['block_index'] - 1)
                     config.CURRENT_BLOCK_INDEX = msg_data['block_index'] - 1
 
-                    #for the current last_message_index (which could have gone down after the reorg), query czarcraftd
+                    #for the current last_message_index (which could have gone down after the reorg), query litetokensd
                     running_info = util.call_jsonrpc_api("get_running_info", abort_on_error=True)['result']
                     config.LAST_MESSAGE_INDEX = running_info['last_message_index']
                     
@@ -469,16 +469,16 @@ def process_cpd_blockfeed(zmq_publisher_eventfeed):
             clean_mempool_tx()
 
         elif my_latest_block['block_index'] > last_processed_block['block_index']:
-            #we have stale blocks (i.e. most likely a reorg happened in czarcraftd)?? this shouldn't happen, as we
+            #we have stale blocks (i.e. most likely a reorg happened in litetokensd)?? this shouldn't happen, as we
             # should get a reorg message. Just to be on the safe side, prune back MAX_REORG_NUM_BLOCKS blocks
-            # before what czarcraftd is saying if we see this
-            logging.error("Very odd: Ahead of czarcraftd with block indexes! Pruning back %s blocks to be safe." % config.MAX_REORG_NUM_BLOCKS)
+            # before what litetokensd is saying if we see this
+            logging.error("Very odd: Ahead of litetokensd with block indexes! Pruning back %s blocks to be safe." % config.MAX_REORG_NUM_BLOCKS)
             my_latest_block = prune_my_stale_blocks(last_processed_block['block_index'] - config.MAX_REORG_NUM_BLOCKS)
         else:
-            #...we may be caught up (to czarcraftd), but czarcraftd may not be (to the blockchain). And if it isn't, we aren't
+            #...we may be caught up (to litetokensd), but litetokensd may not be (to the blockchain). And if it isn't, we aren't
             config.CAUGHT_UP = running_info['db_caught_up']
             
-            #this logic here will cover a case where we shut down craftblockd, then start it up again quickly...
+            #this logic here will cover a case where we shut down liteblockd, then start it up again quickly...
             # in that case, there are no new blocks for it to parse, so LAST_MESSAGE_INDEX would otherwise remain 0.
             # With this logic, we will correctly initialize LAST_MESSAGE_INDEX to the last message ID of the last processed block
             if config.LAST_MESSAGE_INDEX == -1 or config.CURRENT_BLOCK_INDEX == 0:
@@ -504,4 +504,4 @@ def process_cpd_blockfeed(zmq_publisher_eventfeed):
                 config.CAUGHT_UP_STARTED_EVENTS = True
 
             publish_mempool_tx()
-            time.sleep(2) #craftblockd itself is at least caught up, wait a bit to query again for the latest block from cpd
+            time.sleep(2) #liteblockd itself is at least caught up, wait a bit to query again for the latest block from cpd

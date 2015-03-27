@@ -129,9 +129,9 @@ if __name__ == '__main__':
         config.LITETOKENSD_RPC_PORT = configfile.get('Default', 'litetokensd-rpc-port')
     else:
         if config.TESTNET:
-            config.LITETOKENSD_RPC_PORT = 17730
+            config.LITETOKENSD_RPC_PORT = 17740
         else:
-            config.LITETOKENSD_RPC_PORT = 7730
+            config.LITETOKENSD_RPC_PORT = 7740
     try:
         config.LITETOKENSD_RPC_PORT = int(config.LITETOKENSD_RPC_PORT)
         assert int(config.LITETOKENSD_RPC_PORT) > 1 and int(config.LITETOKENSD_RPC_PORT) < 65535
@@ -300,9 +300,9 @@ if __name__ == '__main__':
         config.RPC_PORT = configfile.get('Default', 'rpc-port')
     else:
         if config.TESTNET:
-            config.RPC_PORT = 14130
+            config.RPC_PORT = 14140
         else:
-            config.RPC_PORT = 4130        
+            config.RPC_PORT = 4140        
     try:
         config.RPC_PORT = int(config.RPC_PORT)
         assert int(config.RPC_PORT) > 1 and int(config.RPC_PORT) < 65535
@@ -332,9 +332,9 @@ if __name__ == '__main__':
         config.SOCKETIO_PORT = configfile.get('Default', 'socketio-port')
     else:
         if config.TESTNET:
-            config.SOCKETIO_PORT = 14131
+            config.SOCKETIO_PORT = 14141
         else:
-            config.SOCKETIO_PORT = 4131        
+            config.SOCKETIO_PORT = 4141        
     try:
         config.SOCKETIO_PORT = int(config.SOCKETIO_PORT)
         assert int(config.SOCKETIO_PORT) > 1 and int(config.SOCKETIO_PORT) < 65535
@@ -356,9 +356,9 @@ if __name__ == '__main__':
         config.SOCKETIO_CHAT_PORT = configfile.get('Default', 'socketio-chat-port')
     else:
         if config.TESTNET:
-            config.SOCKETIO_CHAT_PORT = 14132
+            config.SOCKETIO_CHAT_PORT = 14142
         else:
-            config.SOCKETIO_CHAT_PORT = 4132       
+            config.SOCKETIO_CHAT_PORT = 4142       
     try:
         config.SOCKETIO_CHAT_PORT = int(config.SOCKETIO_CHAT_PORT)
         assert int(config.SOCKETIO_CHAT_PORT) > 1 and int(config.SOCKETIO_CHAT_PORT) < 65535
@@ -492,7 +492,7 @@ if __name__ == '__main__':
     
     #Load in litetokenswallet config settings
     #TODO: Hardcode in cw path for now. Will be taken out to a plugin shortly...
-    litetokenswallet_config_path = os.path.join('/home/ceo/live/litewallet/livenet/litewallet.conf.json')
+    litetokenswallet_config_path = os.path.join('/home/ceo/live/chains/litetokens/litewallet/litewallet.conf.json')
     if os.path.exists(litetokenswallet_config_path):
         logging.info("Loading litetokenswallet config at '%s'" % litetokenswallet_config_path)
         with open(litetokenswallet_config_path) as f:
